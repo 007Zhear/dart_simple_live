@@ -13,6 +13,7 @@ import 'package:simple_live_app/widgets/settings/settings_card.dart';
 import 'package:simple_live_app/widgets/settings/settings_menu.dart';
 import 'package:simple_live_app/widgets/settings/settings_number.dart';
 import 'package:simple_live_app/widgets/settings/settings_switch.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class PlaySettingsPage extends GetView<AppSettingsController> {
   const PlaySettingsPage({Key? key}) : super(key: key);
@@ -182,6 +183,12 @@ class PlaySettingsPage extends GetView<AppSettingsController> {
                   },
                 ),
                 AppStyle.divider,
+                SettingsAction(
+                  title: "模型推荐下载",
+                  subtitle: "按设备性能选择高级 / 中级 / 甜点级模型",
+                  onTap: showSubtitleModelRecommendations,
+                ),
+                AppStyle.divider,
                 Obx(
                   () => SettingsMenu<String>(
                     title: "字幕语言",
@@ -270,7 +277,7 @@ class PlaySettingsPage extends GetView<AppSettingsController> {
                     visible: Platform.isAndroid,
                     child: SettingsSwitch(
                       title: "退出时自动小窗",
-                      subtitle: "按返回键或退到后台时自动进入小窗，默认关闭",
+                      subtitle: "按 Home 键或系统手势退到后台时进入小窗；应用内返回仍回到主页",
                       value: controller.autoPipOnExit.value,
                       onChanged: (e) {
                         controller.setAutoPipOnExit(e);
@@ -382,6 +389,71 @@ class PlaySettingsPage extends GetView<AppSettingsController> {
           ),
         ],
       ),
+    );
+  }
+
+  void showSubtitleModelRecommendations() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text("字幕模型推荐"),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SubtitleModelTile(
+                title: "高级",
+                subtitle: "Whisper large-v3，准确率高，体积大，适合高性能桌面设备。",
+                url:
+                    "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-large-v3",
+              ),
+              _SubtitleModelTile(
+                title: "中级",
+                subtitle: "Paraformer zh，中文直播优先，速度和准确率比较均衡。",
+                url:
+                    "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14",
+              ),
+              _SubtitleModelTile(
+                title: "甜点级",
+                subtitle:
+                    "Streaming Zipformer bilingual zh-en，中英实时性好，移动端优先试这个档位。",
+                url:
+                    "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20",
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text("关闭"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubtitleModelTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String url;
+
+  const _SubtitleModelTile({
+    required this.title,
+    required this.subtitle,
+    required this.url,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.open_in_new),
+      onTap: () {
+        launchUrlString(url, mode: LaunchMode.externalApplication);
+      },
     );
   }
 }

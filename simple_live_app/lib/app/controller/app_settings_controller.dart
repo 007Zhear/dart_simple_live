@@ -193,8 +193,8 @@ class AppSettingsController extends GetxController {
     autoUpdateFollowDuration.value = LocalStorageService.instance
         .getValue(LocalStorageService.kUpdateFollowDuration, 10);
 
-    updateFollowThreadCount.value = LocalStorageService.instance
-        .getValue(LocalStorageService.kUpdateFollowThreadCount, 0); // 默认 0 = 自动
+    updateFollowThreadCount.value = LocalStorageService.instance.getValue(
+        LocalStorageService.kUpdateFollowThreadCount, 8); // 默认 8，0 = 自动
 
     initSiteSort();
     initHomeSort();
@@ -1658,7 +1658,7 @@ class AppSettingsController extends GetxController {
         .setValue(LocalStorageService.kUpdateFollowDuration, e);
   }
 
-  var updateFollowThreadCount = 4.obs;
+  var updateFollowThreadCount = 8.obs;
   void setUpdateFollowThreadCount(int e) {
     updateFollowThreadCount.value = e;
     LocalStorageService.instance

@@ -1,7 +1,7 @@
 {
-    "version": "1.7.4",
-    "version_num": 10704,
-    "version_desc": "- 远程同步改用自建 Cloudflare Worker WebSocket 服务，不再依赖作者同步域名\n- 修复局域网同步自检页错误显示为 SimpeLive android 的问题\n- 增强关注、历史、屏蔽词同步导入的容错，跳过异常数据而不是直接中断\n- 兼容主 App 新版屏蔽词导出格式\n- 同步连接异常会写入更明确的日志，方便继续定位网络或服务端问题",
+    "version": "1.7.5",
+    "version_num": 10705,
+    "version_desc": "- 关注刷新并发默认改为 8，保留 0=自动并发\n- 抖音账号页明确 TV 端需从手机/电脑端同步网页登录 Cookie\n- 修正版本与 release tag 为 tv_1.7.5",
     "prerelease": true,
-    "download_url": "https://github.com/June6699/dart_simple_live/releases/tag/tv_v1.7.4"
+    "download_url": "https://github.com/June6699/dart_simple_live/releases/tag/tv_1.7.5"
 }

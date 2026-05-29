@@ -1076,7 +1076,7 @@ class _PlayerSuperChatCardState extends State<PlayerSuperChatCard> {
 }
 
 class LocalDisplaySC {
-  final LiveSuperChatMessage sc;
+  LiveSuperChatMessage sc;
   final DateTime expireAt;
   final int duration;
   LocalDisplaySC(this.sc, this.expireAt, this.duration);
@@ -1124,11 +1124,7 @@ class _PlayerSuperChatOverlayState extends State<PlayerSuperChatOverlay> {
     );
     if (currentIndex >= 0) {
       final current = _displayed[currentIndex];
-      _displayed[currentIndex] = LocalDisplaySC(
-        sc,
-        current.expireAt,
-        current.duration,
-      );
+      current.sc = sc;
       setState(() {});
       return;
     }
@@ -1196,7 +1192,11 @@ class _PlayerSuperChatOverlayState extends State<PlayerSuperChatOverlay> {
               child: PlayerSuperChatCard(
                 key: ValueKey(localSC.fingerprint),
                 message: localSC.sc,
-                onExpire: () {},
+                onExpire: () {
+                  setState(() {
+                    _removeLocalSC(localSC);
+                  });
+                },
                 duration: localSC.duration,
                 onUserTap: () => widget.controller.showUserActions(
                   localSC.sc.userName,

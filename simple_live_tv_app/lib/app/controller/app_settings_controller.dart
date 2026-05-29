@@ -28,6 +28,8 @@ class AppSettingsController extends GetxController {
         .getValue(LocalStorageService.kDanmuSpeed, 10.0);
     danmuEnable.value = LocalStorageService.instance
         .getValue(LocalStorageService.kDanmuEnable, true);
+    danmuRenderEmoji.value = LocalStorageService.instance
+        .getValue(LocalStorageService.kDanmuRenderEmoji, true);
     danmuStrokeWidth.value = LocalStorageService.instance
         .getValue(LocalStorageService.kDanmuStrokeWidth, 4.0);
     danmuTopMargin.value = LocalStorageService.instance
@@ -112,7 +114,7 @@ class AppSettingsController extends GetxController {
         .getValue(LocalStorageService.kUpdateFollowDuration, 10);
 
     updateFollowThreadCount.value = LocalStorageService.instance
-        .getValue(LocalStorageService.kUpdateFollowThreadCount, 4);
+        .getValue(LocalStorageService.kUpdateFollowThreadCount, 8);
 
     super.onInit();
   }
@@ -175,6 +177,13 @@ class AppSettingsController extends GetxController {
   void setDanmuEnable(bool e) {
     danmuEnable.value = e;
     LocalStorageService.instance.setValue(LocalStorageService.kDanmuEnable, e);
+  }
+
+  var danmuRenderEmoji = true.obs;
+  void setDanmuRenderEmoji(bool e) {
+    danmuRenderEmoji.value = e;
+    LocalStorageService.instance
+        .setValue(LocalStorageService.kDanmuRenderEmoji, e);
   }
 
   var danmuStrokeWidth = 4.0.obs;
@@ -360,7 +369,7 @@ class AppSettingsController extends GetxController {
         .setValue(LocalStorageService.kUpdateFollowDuration, e);
   }
 
-  var updateFollowThreadCount = 4.obs;
+  var updateFollowThreadCount = 8.obs;
   void setUpdateFollowThreadCount(int e) {
     updateFollowThreadCount.value = e;
     LocalStorageService.instance

@@ -1,7 +1,7 @@
 {
-  "version": "1.12.3",
-  "version_num": 11203,
-  "version_desc": "- Android 后台播放改为前台服务保活，减少切后台后断音\n- 修复 Android 覆盖层或小窗导致弹幕被清空的问题\n- 远程同步改用自建 Cloudflare Worker WebSocket 服务，不再依赖作者同步域名\n- Windows/macOS 支持多开，后开的实例使用数据快照，避免抢占同一份本地数据导致白屏\n- 开源主页改为当前仓库，弹幕字体上限提高到 72",
+  "version": "1.12.4",
+  "version_num": 11204,
+  "version_desc": "- 关注刷新并发默认改为 8，保留 0=自动并发\n- 抖音账号入口补齐网页登录/扫码登录和 Cookie 兜底说明，便于房间名/主播名搜索\n- 局域网同步增加跨网络不可达提示，避免一直转圈无反馈\n- Android 自动小窗只在退到后台时触发，应用内返回仍回主页\n- 直播间内补齐实时字幕设置和模型推荐入口\n- 其他设置里的同步服务地址改为短标签显示，窄屏更清爽\n- 修正版本与 release tag 为 v1.12.4",
   "prerelease": false,
-  "download_url": "https://github.com/June6699/dart_simple_live/releases/tag/v1.12.3"
+  "download_url": "https://github.com/June6699/dart_simple_live/releases/tag/v1.12.4"
 }

@@ -8,8 +8,17 @@ import 'package:simple_live_app/routes/route_path.dart';
 import 'package:simple_live_app/services/bilibili_account_service.dart';
 import 'package:simple_live_app/services/douyin_account_service.dart';
 import 'package:simple_live_core/simple_live_core.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class AccountController extends GetxController {
+  static const _douyinHomeUrl = "https://www.douyin.com/";
+
+  bool get _supportsDouyinWebLogin =>
+      Platform.isAndroid ||
+      Platform.isIOS ||
+      Platform.isWindows ||
+      Platform.isMacOS;
+
   void bilibiliTap() async {
     if (BiliBiliAccountService.instance.logined.value) {
       var result = await Utils.showAlertDialog("确定要退出哔哩哔哩账号吗？", title: "退出登录");
@@ -90,11 +99,11 @@ class AccountController extends GetxController {
         mainAxisSize: MainAxisSize.min,
         children: [
           Visibility(
-            visible: Platform.isAndroid || Platform.isIOS || Platform.isWindows,
+            visible: _supportsDouyinWebLogin,
             child: ListTile(
               leading: const Icon(Icons.qr_code_scanner),
               title: const Text("网页登录/扫码登录"),
-              subtitle: const Text("打开抖音网页登录，扫码后保存 Cookie"),
+              subtitle: const Text("登录自己的抖音账号，保存 Cookie 后可用于搜索"),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Get.back();
@@ -102,10 +111,23 @@ class AccountController extends GetxController {
               },
             ),
           ),
+          Visibility(
+            visible: Platform.isLinux,
+            child: ListTile(
+              leading: const Icon(Icons.open_in_browser),
+              title: const Text("浏览器登录后粘贴 Cookie"),
+              subtitle: const Text("Linux 暂无内置 WebView，打开浏览器登录后手动粘贴完整 Cookie"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Get.back();
+                await openDouyinInBrowserThenConfigCookie();
+              },
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.edit_outlined),
             title: const Text("Cookie登录"),
-            subtitle: const Text("手动粘贴完整抖音 Cookie"),
+            subtitle: const Text("手动粘贴自己的 www.douyin.com 完整 Cookie"),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Get.back();
@@ -139,6 +161,14 @@ class AccountController extends GetxController {
     }
   }
 
+  Future<void> openDouyinInBrowserThenConfigCookie() async {
+    await launchUrlString(
+      _douyinHomeUrl,
+      mode: LaunchMode.externalApplication,
+    );
+    doDouyinCookieConfig();
+  }
+
   void doDouyinCookieConfig() {
     // 兼容旧版只保存 ttwid 的配置。
     var savedCookie = DouyinAccountService.instance.cookie;
@@ -157,7 +187,7 @@ class AccountController extends GetxController {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "默认内置 ttwid 可用于播放；搜索接口被要求登录时，建议粘贴完整 www.douyin.com Cookie。",
+                "默认内置 ttwid 可用于播放；房间名/主播名搜索被要求登录时，请粘贴自己账号的完整 www.douyin.com Cookie。",
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 12),

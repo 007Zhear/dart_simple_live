@@ -133,6 +133,9 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
         DanmakuContentItem(
           msg.message,
           color: Color.fromARGB(255, msg.color.r, msg.color.g, msg.color.b),
+          imageUrls: AppSettingsController.instance.danmuRenderEmoji.value
+              ? msg.imageUrls
+              : null,
         ),
       ]);
     } else if (msg.type == LiveMessageType.online) {

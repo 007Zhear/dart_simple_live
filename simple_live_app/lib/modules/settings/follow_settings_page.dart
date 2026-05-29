@@ -56,12 +56,15 @@ class FollowSettingsPage extends GetView<AppSettingsController> {
                 Obx(
                   () {
                     var threadCount = controller.updateFollowThreadCount.value;
-                    var displayValue =
-                        threadCount == 0 ? "自动 (根据 CPU 核心数)" : "$threadCount";
+                    var displayValue = threadCount == 0
+                        ? "自动 (根据 CPU 核心数)"
+                        : threadCount == 8
+                            ? "8 (默认)"
+                            : "$threadCount";
 
                     return SettingsAction(
                       title: "更新并发数",
-                      subtitle: "0 = 自动根据 CPU 核心数优化（推荐），或手动设置 1-20",
+                      subtitle: "默认 8；0 = 自动根据 CPU 核心数优化；可手动设置 1-20",
                       value: displayValue,
                       onTap: () {
                         showConcurrencyDialog();
@@ -118,6 +121,10 @@ class FollowSettingsPage extends GetView<AppSettingsController> {
               "CPU 核心数: $cpuCount",
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
+            const Text(
+              "默认值: 8",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             Text(
               "自动推荐值: $autoValue",
               style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -133,9 +140,9 @@ class FollowSettingsPage extends GetView<AppSettingsController> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                _buildQuickOption(8, "8 (默认)", currentValue),
                 _buildQuickOption(0, "自动 ($autoValue)", currentValue),
                 _buildQuickOption(4, "4", currentValue),
-                _buildQuickOption(8, "8", currentValue),
                 _buildQuickOption(12, "12", currentValue),
                 _buildQuickOption(16, "16", currentValue),
                 _buildQuickOption(20, "20", currentValue),
@@ -146,9 +153,9 @@ class FollowSettingsPage extends GetView<AppSettingsController> {
             TextField(
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: "自定义 (1-20)",
+                labelText: "自定义 (0-20，0 为自动)",
                 border: OutlineInputBorder(),
-                hintText: "输入 1-20 之间的数字",
+                hintText: "输入 0-20 之间的数字",
               ),
               onSubmitted: (value) {
                 var num = int.tryParse(value);

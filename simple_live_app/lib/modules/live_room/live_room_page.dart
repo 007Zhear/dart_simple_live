@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:floating/floating.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:path/path.dart' as p;
 import 'package:remixicon/remixicon.dart';
 import 'package:simple_live_app/app/app_style.dart';
 import 'package:simple_live_app/app/constant.dart';
@@ -13,15 +16,18 @@ import 'package:simple_live_app/app/utils.dart';
 import 'package:simple_live_app/modules/live_room/live_room_controller.dart';
 import 'package:simple_live_app/modules/live_room/player/player_controls.dart';
 import 'package:simple_live_app/modules/live_room/widgets/live_contribution_rank_panel.dart';
+import 'package:simple_live_app/services/live_subtitle_service.dart';
 import 'package:simple_live_app/widgets/keep_alive_wrapper.dart';
 import 'package:simple_live_app/widgets/net_image.dart';
 import 'package:simple_live_app/widgets/settings/settings_action.dart';
 import 'package:simple_live_app/widgets/settings/settings_card.dart';
+import 'package:simple_live_app/widgets/settings/settings_menu.dart';
 import 'package:simple_live_app/widgets/settings/settings_number.dart';
 import 'package:simple_live_app/widgets/settings/settings_switch.dart';
 import 'package:simple_live_app/widgets/status/app_empty_widget.dart';
 import 'package:simple_live_app/widgets/superchat_card.dart';
 import 'package:simple_live_core/simple_live_core.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class LiveRoomPage extends GetView<LiveRoomController> {
   static const double _desktopSidePanelWidth = 300.0;
@@ -254,9 +260,7 @@ class LiveRoomPage extends GetView<LiveRoomController> {
   }
 
   Future<void> _handleBack(BuildContext context) async {
-    if (await controller.tryAutoPipOnExit()) {
-      return;
-    }
+    await controller.cancelAutoPipOnLeave();
     if (context.mounted) {
       Navigator.of(context).pop();
     }
@@ -389,6 +393,9 @@ class LiveRoomPage extends GetView<LiveRoomController> {
     }
     return Stack(
       children: [
+        const Positioned.fill(
+          child: ColoredBox(color: Colors.black),
+        ),
         Video(
           key: controller.globalPlayerKey,
           controller: controller.videoController,
@@ -880,6 +887,14 @@ class LiveRoomPage extends GetView<LiveRoomController> {
         Padding(
           padding: AppStyle.edgeInsetsA12,
           child: Text(
+            "实时字幕",
+            style: Get.textTheme.titleSmall,
+          ),
+        ),
+        buildSubtitleSettingsCard(),
+        Padding(
+          padding: AppStyle.edgeInsetsA12,
+          child: Text(
             "更多设置",
             style: Get.textTheme.titleSmall,
           ),
@@ -1001,6 +1016,15 @@ class LiveRoomPage extends GetView<LiveRoomController> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.subtitles_outlined),
+              title: const Text("实时字幕"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Get.back();
+                showSubtitleSettingsSheet();
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.history_outlined),
               title: const Text("观看历史"),
               trailing: const Icon(Icons.chevron_right),
@@ -1064,6 +1088,185 @@ class LiveRoomPage extends GetView<LiveRoomController> {
     );
   }
 
+  Widget buildSubtitleSettingsCard() {
+    final settings = AppSettingsController.instance;
+    return SettingsCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Obx(
+            () => SettingsSwitch(
+              title: "启用实时字幕",
+              subtitle:
+                  "需要先选择本机模型路径，${LiveSubtitleService.instance.platformStatusLabel}",
+              value: settings.liveSubtitleEnable.value,
+              onChanged: (e) async {
+                if (e) {
+                  final hasModel = await LiveSubtitleService.instance
+                      .validateModelPath(settings.liveSubtitleModelPath.value);
+                  if (!hasModel) {
+                    SmartDialog.showToast("请先选择有效的字幕模型路径");
+                    return;
+                  }
+                }
+                settings.setLiveSubtitleEnable(e);
+                await LiveSubtitleService.instance.syncPreviewFromSettings();
+              },
+            ),
+          ),
+          AppStyle.divider,
+          Obx(
+            () {
+              final modelPath = settings.liveSubtitleModelPath.value;
+              final label = modelPath.isEmpty ? "未选择" : p.basename(modelPath);
+              return SettingsAction(
+                title: "模型路径",
+                subtitle: modelPath.isEmpty ? "不内置模型，需用户自行下载并选择" : modelPath,
+                value: label,
+                onTap: pickSubtitleModelPath,
+              );
+            },
+          ),
+          AppStyle.divider,
+          SettingsAction(
+            title: "模型推荐下载",
+            subtitle: "按设备性能选择高级 / 中级 / 甜点级模型",
+            onTap: showSubtitleModelRecommendations,
+          ),
+          AppStyle.divider,
+          Obx(
+            () => SettingsMenu<String>(
+              title: "字幕语言",
+              value: settings.liveSubtitleLanguage.value,
+              valueMap: const {
+                "auto": "自动",
+                "zh": "中文",
+                "en": "英语",
+                "ja": "日语",
+                "ko": "韩语",
+              },
+              onChanged: (e) async {
+                settings.setLiveSubtitleLanguage(e);
+                await LiveSubtitleService.instance.syncPreviewFromSettings();
+              },
+            ),
+          ),
+          AppStyle.divider,
+          Obx(
+            () => SettingsNumber(
+              title: "字幕字号",
+              value: settings.liveSubtitleFontSize.value.toInt(),
+              min: 12,
+              max: 36,
+              unit: "px",
+              onChanged: (e) {
+                settings.setLiveSubtitleFontSize(e.toDouble());
+              },
+            ),
+          ),
+          AppStyle.divider,
+          Obx(
+            () => SettingsMenu<int>(
+              title: "字幕位置",
+              value: settings.liveSubtitlePosition.value,
+              valueMap: const {
+                0: "上方",
+                1: "中间",
+                2: "下方",
+              },
+              onChanged: (e) {
+                settings.setLiveSubtitlePosition(e);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showSubtitleSettingsSheet() {
+    showModalBottomSheet(
+      context: Get.context!,
+      constraints: const BoxConstraints(maxWidth: 600),
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (_) => SafeArea(
+        top: false,
+        child: ListView(
+          shrinkWrap: true,
+          padding: AppStyle.edgeInsetsA12.copyWith(
+            bottom: AppStyle.bottomBarHeight,
+          ),
+          children: [
+            Padding(
+              padding: AppStyle.edgeInsetsH12.copyWith(bottom: 8),
+              child: Text(
+                "实时字幕",
+                style: Get.textTheme.titleMedium,
+              ),
+            ),
+            buildSubtitleSettingsCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> pickSubtitleModelPath() async {
+    final result = await FilePicker.platform.pickFiles();
+    final selectedPath = result?.files.single.path;
+    if (selectedPath == null || selectedPath.isEmpty) {
+      return;
+    }
+    if (!await LiveSubtitleService.instance.validateModelPath(selectedPath)) {
+      SmartDialog.showToast("模型路径不存在");
+      return;
+    }
+    AppSettingsController.instance.setLiveSubtitleModelPath(selectedPath);
+    await LiveSubtitleService.instance.syncPreviewFromSettings();
+  }
+
+  void showSubtitleModelRecommendations() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text("字幕模型推荐"),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SubtitleModelTile(
+                title: "高级",
+                subtitle: "Whisper large-v3，准确率高，体积大，适合高性能桌面设备。",
+                url:
+                    "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-large-v3",
+              ),
+              _SubtitleModelTile(
+                title: "中级",
+                subtitle: "Paraformer zh，中文直播优先，速度和准确率比较均衡。",
+                url:
+                    "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14",
+              ),
+              _SubtitleModelTile(
+                title: "甜点级",
+                subtitle:
+                    "Streaming Zipformer bilingual zh-en，中英实时性好，移动端优先试这个档位。",
+                url:
+                    "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20",
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text("关闭"),
+          ),
+        ],
+      ),
+    );
+  }
+
   String parseDuration(int sec) {
     // 转为时分秒
     var h = sec ~/ 3600;
@@ -1076,6 +1279,31 @@ class LiveRoomPage extends GetView<LiveRoomController> {
       return "${m.toString().padLeft(2, '0')}分钟${s.toString().padLeft(2, '0')}秒";
     }
     return "${s.toString().padLeft(2, '0')}秒";
+  }
+}
+
+class _SubtitleModelTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String url;
+
+  const _SubtitleModelTile({
+    required this.title,
+    required this.subtitle,
+    required this.url,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.open_in_new),
+      onTap: () {
+        launchUrlString(url, mode: LaunchMode.externalApplication);
+      },
+    );
   }
 }
 

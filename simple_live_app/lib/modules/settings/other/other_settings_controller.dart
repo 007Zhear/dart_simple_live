@@ -235,6 +235,22 @@ class OtherSettingsController extends BaseController {
   }
 
   String get syncServerUrl => SignalRService.configuredUrl;
+  String get syncServerUrlLabel {
+    final configured = SignalRService.configuredUrl;
+    final isDefault = configured == SignalRService.kDefaultUrl;
+    final host = Uri.tryParse(configured)?.host ?? "";
+    if (host.isEmpty) {
+      return isDefault ? "默认服务" : "自定义服务";
+    }
+    return isDefault ? "默认服务" : "自定义: $host";
+  }
+
+  String get syncServerUrlSubtitle {
+    final configured = SignalRService.configuredUrl;
+    final isDefault = configured == SignalRService.kDefaultUrl;
+    return isDefault ? "远程同步使用默认 WebSocket 服务" : configured;
+  }
+
   String get syncProxyUrl => SignalRService.proxyDisplayName;
 
   void editSyncServerUrl() async {

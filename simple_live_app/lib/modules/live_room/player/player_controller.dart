@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:auto_orientation_v2/auto_orientation_v2.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
@@ -735,6 +736,109 @@ mixin PlayerSystemMixin on PlayerMixin, PlayerStateMixin, PlayerDanmakuMixin {
 
   /// 开启小窗播放前弹幕状态
   bool danmakuStateBeforePIP = false;
+  bool _pipStateApplied = false;
+  bool _autoPipOnLeaveConfigured = false;
+
+  Rational _resolvePipAspectRatio() {
+    final width = player.state.width ?? 0;
+    final height = player.state.height ?? 0;
+    if (height > width) {
+      return const Rational.vertical();
+    }
+    return const Rational.landscape();
+  }
+
+  math.Rectangle<int>? _buildPipSourceRectHint() {
+    final context = globalPlayerKey.currentContext;
+    if (context == null) {
+      return null;
+    }
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return null;
+    }
+    final offset = renderObject.localToGlobal(Offset.zero);
+    final pixelRatio = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
+    return math.Rectangle<int>(
+      (offset.dx * pixelRatio).round(),
+      (offset.dy * pixelRatio).round(),
+      (renderObject.size.width * pixelRatio).round(),
+      (renderObject.size.height * pixelRatio).round(),
+    );
+  }
+
+  void _ensurePipStatusListener() {
+    _pipSubscription ??= pip.pipStatusStream.listen((event) {
+      if (event == PiPStatus.enabled) {
+        _applyPipEnteredState();
+      } else if (event == PiPStatus.disabled) {
+        _restorePipExitedState();
+      }
+      Log.w(event.toString());
+    });
+  }
+
+  void _applyPipEnteredState() {
+    if (_pipStateApplied) {
+      return;
+    }
+    _pipStateApplied = true;
+    danmakuStateBeforePIP = showDanmakuState.value;
+    if (AppSettingsController.instance.pipHideDanmu.value &&
+        danmakuStateBeforePIP) {
+      showDanmakuState.value = false;
+      danmakuController?.clear();
+    }
+    showControlsState.value = false;
+  }
+
+  void _restorePipExitedState() {
+    if (!_pipStateApplied && !_autoPipOnLeaveConfigured) {
+      return;
+    }
+    _pipStateApplied = false;
+    _autoPipOnLeaveConfigured = false;
+    showDanmakuState.value = danmakuStateBeforePIP;
+    if (showDanmakuState.value) {
+      rebuildDanmakuView(clearCurrent: false);
+    }
+  }
+
+  Future<void> cancelAutoPipOnLeave() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+    _autoPipOnLeaveConfigured = false;
+    try {
+      await pip.cancelOnLeavePiP();
+    } catch (e) {
+      Log.d("取消自动小窗失败: $e");
+    }
+  }
+
+  Future<bool> prepareAutoPipOnLeave() async {
+    if (!Platform.isAndroid || _autoPipOnLeaveConfigured) {
+      return _autoPipOnLeaveConfigured;
+    }
+    if (await pip.isPipAvailable == false) {
+      return false;
+    }
+    _ensurePipStatusListener();
+    try {
+      await pip.enable(
+        OnLeavePiP(
+          aspectRatio: _resolvePipAspectRatio(),
+          sourceRectHint: _buildPipSourceRectHint(),
+        ),
+      );
+      _autoPipOnLeaveConfigured = true;
+      showControlsState.value = false;
+      return true;
+    } catch (e) {
+      Log.d("配置退后台自动小窗失败: $e");
+      return false;
+    }
+  }
 
   Future enablePIP() async {
     if (!Platform.isAndroid) {
@@ -744,41 +848,15 @@ mixin PlayerSystemMixin on PlayerMixin, PlayerStateMixin, PlayerDanmakuMixin {
       SmartDialog.showToast("设备不支持小窗播放");
       return;
     }
-    danmakuStateBeforePIP = showDanmakuState.value;
-    //关闭并清除弹幕
-    if (AppSettingsController.instance.pipHideDanmu.value &&
-        danmakuStateBeforePIP) {
-      showDanmakuState.value = false;
-    }
-    danmakuController?.clear();
-    //关闭控制器
-    showControlsState.value = false;
-
-    //监听事件
-    var width = player.state.width ?? 0;
-    var height = player.state.height ?? 0;
-    Rational ratio = const Rational.landscape();
-    if (height > width) {
-      ratio = const Rational.vertical();
-    } else {
-      ratio = const Rational.landscape();
-    }
+    await cancelAutoPipOnLeave();
+    _applyPipEnteredState();
+    _ensurePipStatusListener();
     await pip.enable(
       ImmediatePiP(
-        aspectRatio: ratio,
+        aspectRatio: _resolvePipAspectRatio(),
+        sourceRectHint: _buildPipSourceRectHint(),
       ),
     );
-
-    _pipSubscription ??= pip.pipStatusStream.listen((event) {
-      if (event == PiPStatus.disabled) {
-        danmakuController?.clear();
-        showDanmakuState.value = danmakuStateBeforePIP;
-        if (showDanmakuState.value) {
-          rebuildDanmakuView();
-        }
-      }
-      Log.w(event.toString());
-    });
   }
 }
 mixin PlayerGestureControlMixin

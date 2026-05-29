@@ -144,6 +144,22 @@ class SettingsPage extends GetView<SettingsController> {
         AppStyle.vGap24,
         Obx(
           () => SettingsItemWidget(
+            foucsNode: controller.danmakuEmojiFoucsNode,
+            autofocus: controller.danmakuEmojiFoucsNode.isFoucsed.value,
+            title: "显示弹幕表情",
+            items: const {
+              0: "关",
+              1: "开",
+            },
+            value: AppSettingsController.instance.danmuRenderEmoji.value ? 1 : 0,
+            onChanged: (e) {
+              AppSettingsController.instance.setDanmuRenderEmoji(e == 1);
+            },
+          ),
+        ),
+        AppStyle.vGap24,
+        Obx(
+          () => SettingsItemWidget(
             foucsNode: controller.hardwareDecodeFocusNode,
             autofocus: controller.hardwareDecodeFocusNode.isFoucsed.value,
             title: "硬件解码",
@@ -271,12 +287,13 @@ class SettingsPage extends GetView<SettingsController> {
             autofocus: controller.updateFollowThreadFocusNode.isFoucsed.value,
             title: "更新线程数",
             items: const {
+              0: "自动",
               1: "1",
               2: "2",
               3: "3",
               4: "4",
               6: "6",
-              8: "8",
+              8: "8 默认",
               10: "10",
               12: "12",
             },

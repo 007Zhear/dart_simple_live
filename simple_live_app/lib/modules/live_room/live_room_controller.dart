@@ -835,22 +835,23 @@ class LiveRoomController extends PlayerController
     countdown.value = autoExitMinutes.value * 60;
   }
 
-  Future<bool> tryAutoPipOnExit() async {
+  Future<bool> syncAutoPipOnLeave() async {
+    if (_autoPipAttempting) {
+      return false;
+    }
     if (!Platform.isAndroid ||
         !AppSettingsController.instance.autoPipOnExit.value ||
-        !liveStatus.value ||
-        _autoPipAttempting) {
+        !liveStatus.value) {
+      if (Platform.isAndroid) {
+        await cancelAutoPipOnLeave();
+      }
       return false;
     }
     _autoPipAttempting = true;
     try {
-      if (await pip.isPipAvailable == false) {
-        return false;
-      }
-      await enablePIP();
-      return true;
+      return await prepareAutoPipOnLeave();
     } catch (e) {
-      Log.d("自动进入小窗失败: $e");
+      Log.d("配置退后台自动小窗失败: $e");
       return false;
     } finally {
       _autoPipAttempting = false;
@@ -883,6 +884,7 @@ class LiveRoomController extends PlayerController
     if (Platform.isWindows) {
       windowManager.removeListener(this);
     }
+    unawaited(cancelAutoPipOnLeave());
     scrollController.removeListener(scrollListener);
     autoExitTimer?.cancel();
     _superChatRefreshTimer?.cancel();
@@ -1074,6 +1076,7 @@ class LiveRoomController extends PlayerController
       liveStatus.value = detail.value!.status || detail.value!.isRecord;
       _restartSuperChatRefreshTimer();
       _restartOnlineRefreshTimer();
+      unawaited(syncAutoPipOnLeave());
       if (liveStatus.value) {
         getPlayQualites();
       }
@@ -2322,7 +2325,7 @@ ${errorStackTrace ?? ""}''');
       );
     } else if (state == AppLifecycleState.inactive) {
       Log.d("应用短暂失焦:$state");
-      unawaited(tryAutoPipOnExit());
+      unawaited(syncAutoPipOnLeave());
     }
   }
 

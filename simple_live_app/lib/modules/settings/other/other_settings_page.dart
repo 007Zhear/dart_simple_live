@@ -95,8 +95,8 @@ class OtherSettingsPage extends GetView<OtherSettingsController> {
                 GetBuilder<OtherSettingsController>(
                   builder: (controller) => SettingsAction(
                     title: "同步服务地址",
-                    subtitle: "远程同步创建房间/加入房间使用的 WebSocket 服务",
-                    value: controller.syncServerUrl,
+                    subtitle: controller.syncServerUrlSubtitle,
+                    value: controller.syncServerUrlLabel,
                     onTap: controller.editSyncServerUrl,
                   ),
                 ),
@@ -104,8 +104,7 @@ class OtherSettingsPage extends GetView<OtherSettingsController> {
                 GetBuilder<OtherSettingsController>(
                   builder: (controller) => SettingsAction(
                     title: "同步代理地址",
-                    subtitle:
-                        "默认自动检测本机 127.0.0.1:51888；需要直连可填写 direct",
+                    subtitle: "默认自动检测本机 127.0.0.1:51888；需要直连可填写 direct",
                     value: controller.syncProxyUrl,
                     onTap: controller.editSyncProxyUrl,
                   ),
