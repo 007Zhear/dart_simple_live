@@ -221,7 +221,7 @@ class AccountController extends GetxController {
               ),
               const SizedBox(height: 6),
               const Text(
-                "电脑端获取方式：F12 打开开发者工具，在 Network 里点 www.douyin.com/aweme/v1/web/live/search/ 或其他 www.douyin.com 请求，复制 Request Headers 里的 Cookie 整行。",
+                "电脑端获取方式：F12 打开开发者工具，在 Network 里点 www.douyin.com 或 live.douyin.com 的请求，复制 Request Headers 里的 Cookie 整行；也可以粘贴请求标头整段，应用会自动提取 Cookie。",
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 12),
@@ -283,7 +283,7 @@ class AccountController extends GetxController {
   }
 
   String _normalizeDouyinCookieInput(String input) {
-    var cookie = input.trim();
+    var cookie = _extractDouyinCookieFromHeaderText(input) ?? input.trim();
     if (cookie.toLowerCase().startsWith("cookie:")) {
       cookie = cookie.substring(cookie.indexOf(":") + 1).trim();
     }
@@ -291,5 +291,32 @@ class AccountController extends GetxController {
       cookie = 'ttwid=$cookie';
     }
     return cookie;
+  }
+
+  String? _extractDouyinCookieFromHeaderText(String input) {
+    final lines = input
+        .split(RegExp(r"\r?\n"))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final lower = line.toLowerCase();
+      if (lower.startsWith("cookie:")) {
+        final value = line.substring(line.indexOf(":") + 1).trim();
+        if (value.contains("=")) {
+          return value;
+        }
+      }
+      if (lower == "cookie" && i + 1 < lines.length) {
+        final value = lines[i + 1].trim();
+        if (value.contains("=")) {
+          return value;
+        }
+      }
+    }
+
+    return null;
   }
 }
