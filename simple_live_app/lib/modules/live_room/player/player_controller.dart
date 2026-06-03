@@ -1011,6 +1011,7 @@ mixin PlayerGestureControlMixin
     leftVerticalDrag = details.globalPosition.dx < Get.width / 2;
 
     throttle = DelayedThrottle(200);
+    lastVolume = -1;
 
     verticalDragging = true;
     if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
@@ -1081,7 +1082,7 @@ mixin PlayerGestureControlMixin
 
   Future _realSetVolume(int volume) async {
     Log.logPrint(volume);
-    await setSessionPlayerVolume(volume.toDouble());
+    // 手势只调系统音量，播放器内部音量由独立设置控制。
     await VolumeController.instance.setVolume(volume / 100);
   }
 
