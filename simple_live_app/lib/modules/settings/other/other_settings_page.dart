@@ -55,6 +55,27 @@ class OtherSettingsPage extends GetView<OtherSettingsController> {
               ),
             ),
           ),
+          if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) ...[
+            Padding(
+              padding: AppStyle.edgeInsetsA12.copyWith(top: 24),
+              child: Text(
+                "桌面窗口",
+                style: Get.textTheme.titleSmall,
+              ),
+            ),
+            SettingsCard(
+              child: Obx(
+                () => SettingsSwitch(
+                  value: AppSettingsController
+                      .instance.rememberWindowPlacement.value,
+                  title: "记住窗口大小和位置",
+                  subtitle: "开启后恢复上次普通窗口位置和最大化状态",
+                  onChanged:
+                      AppSettingsController.instance.setRememberWindowPlacement,
+                ),
+              ),
+            ),
+          ],
           Padding(
             padding: AppStyle.edgeInsetsA12.copyWith(top: 24),
             child: Text(

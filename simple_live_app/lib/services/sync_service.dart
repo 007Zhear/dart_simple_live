@@ -256,7 +256,7 @@ class SyncService extends GetxService {
           int.parse(request.requestedUri.queryParameters['overlay'] ?? '0');
 
       var body = await request.readAsString();
-      Log.d('_syncFollowUserReuqest: $body');
+      Log.d('_syncFollowUserReuqest: ${body.length} bytes');
       var jsonBody = json.decode(body);
       if (jsonBody is! List) {
         throw const FormatException("关注列表格式不是数组");
@@ -279,9 +279,7 @@ class SyncService extends GetxService {
       if (overlay == 1) {
         await DBService.instance.followBox.clear();
       }
-      for (var user in users) {
-        await DBService.instance.followBox.put(user.id, user);
-      }
+      await DBService.instance.addFollows(users);
 
       SmartDialog.showToast('已同步关注用户列表（${users.length} 条）');
       EventBus.instance.emit(Constant.kUpdateFollow, 0);
@@ -305,7 +303,7 @@ class SyncService extends GetxService {
           int.parse(request.requestedUri.queryParameters['overlay'] ?? '0');
 
       var body = await request.readAsString();
-      Log.d('_syncFollowUserTagRequest: $body');
+      Log.d('_syncFollowUserTagRequest: ${body.length} bytes');
       var jsonBody = json.decode(body);
       if (jsonBody is! List) {
         throw const FormatException("标签列表格式不是数组");
@@ -328,9 +326,9 @@ class SyncService extends GetxService {
       if (overlay == 1) {
         await DBService.instance.tagBox.clear();
       }
-      for (var tag in tags) {
-        await DBService.instance.tagBox.put(tag.id, tag);
-      }
+      await DBService.instance.tagBox.putAll({
+        for (final tag in tags) tag.id: tag,
+      });
 
       SmartDialog.showToast('已同步标签列表（${tags.length} 条）');
       EventBus.instance.emit(Constant.kUpdateFollow, 0);

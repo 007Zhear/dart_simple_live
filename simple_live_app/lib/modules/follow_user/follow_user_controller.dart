@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:simple_live_app/app/controller/base_controller.dart';
+import 'package:simple_live_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_app/app/event_bus.dart';
 import 'package:simple_live_app/app/log.dart';
 import 'package:simple_live_app/app/sites.dart';
@@ -49,6 +50,7 @@ class FollowUserController extends BasePageController<FollowUser> {
 
   @override
   void onInit() {
+    _restoreGroupSelection();
     onUpdatedIndexedStream = EventBus.instance.listen(
       EventBus.kBottomNavigationBarClicked,
       (index) {
@@ -64,6 +66,14 @@ class FollowUserController extends BasePageController<FollowUser> {
     super.onInit();
   }
 
+  void _restoreGroupSelection() {
+    final settings = AppSettingsController.instance;
+    groupMode.value = settings.followGroupMode.value == "platform"
+        ? FollowGroupMode.platform
+        : FollowGroupMode.liveStatus;
+    selectedGroupId.value = settings.followSelectedGroupId.value;
+  }
+
   @override
   Future refreshData() async {
     await FollowService.instance.loadData();
@@ -73,10 +83,13 @@ class FollowUserController extends BasePageController<FollowUser> {
 
   @override
   Future<List<FollowUser>> getData(int page, int pageSize) async {
-    if (page > 1) {
+    final items = _filterBySelectedGroup();
+    final start = (page - 1) * pageSize;
+    if (start >= items.length) {
       return Future.value([]);
     }
-    return _filterBySelectedGroup();
+    final end = (start + pageSize).clamp(0, items.length).toInt();
+    return items.sublist(start, end);
   }
 
   void updateTagList() {
@@ -90,7 +103,13 @@ class FollowUserController extends BasePageController<FollowUser> {
   }
 
   void filterData() {
-    list.assignAll(_filterBySelectedGroup());
+    currentPage = 1;
+    final items = _filterBySelectedGroup();
+    final end = pageSize.clamp(0, items.length).toInt();
+    list.assignAll(items.sublist(0, end));
+    currentPage = end < items.length ? 2 : 1;
+    canLoadMore.value = end < items.length;
+    pageEmpty.value = items.isEmpty;
   }
 
   List<FollowGroupOption> get groupOptions {
@@ -101,7 +120,6 @@ class FollowUserController extends BasePageController<FollowUser> {
       options.addAll(const [
         FollowGroupOption(id: "live", title: "直播中", liveStatus: 2),
         FollowGroupOption(id: "not_live", title: "未开播", liveStatus: 1),
-        FollowGroupOption(id: "unknown", title: "读取中", liveStatus: 0),
       ]);
     } else {
       final siteIds = FollowService.instance.followList
@@ -152,8 +170,9 @@ class FollowUserController extends BasePageController<FollowUser> {
     }
     final liveStatus = selected.liveStatus;
     if (liveStatus != null) {
+      final expectedStatus = liveStatus == 1 ? {0, 1} : {liveStatus};
       return FollowService.instance.sortFollowUsers(
-        source.where((item) => item.liveStatus.value == liveStatus),
+        source.where((item) => expectedStatus.contains(item.liveStatus.value)),
       );
     }
     final siteId = selected.siteId;
@@ -168,12 +187,23 @@ class FollowUserController extends BasePageController<FollowUser> {
   void setGroupMode(FollowGroupMode mode) {
     groupMode.value = mode;
     selectedGroupId.value = "all";
+    _saveGroupSelection();
     filterData();
   }
 
   void setGroupOption(FollowGroupOption option) {
     selectedGroupId.value = option.id;
+    _saveGroupSelection();
     filterData();
+  }
+
+  void _saveGroupSelection() {
+    AppSettingsController.instance.setFollowGroupSelection(
+      mode: groupMode.value == FollowGroupMode.platform
+          ? "platform"
+          : "liveStatus",
+      groupId: selectedGroupId.value,
+    );
   }
 
   void removeItem(FollowUser item) async {

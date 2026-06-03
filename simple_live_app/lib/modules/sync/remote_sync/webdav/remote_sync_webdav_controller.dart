@@ -326,10 +326,12 @@ class RemoteSyncWebDAVController extends BaseController {
         try {
           // 清空本地关注列表
           await DBService.instance.followBox.clear();
+          final users = <FollowUser>[];
           for (var item in jsonData) {
             var user = FollowUser.fromJson(item);
-            await DBService.instance.followBox.put(user.id, user);
+            users.add(user);
           }
+          await DBService.instance.addFollows(users);
           Log.i('已同步关注用户列表');
         } catch (e) {
           Log.e('同步关注用户列表失败: $e', StackTrace.current);
@@ -386,13 +388,14 @@ class RemoteSyncWebDAVController extends BaseController {
           // 标签功能和关注具有依赖关系，必须同时同步
           // 清空本地标签列表
           await DBService.instance.tagBox.clear();
+          final tags = <FollowUserTag>[];
           for (var item in jsonData) {
             var tag = FollowUserTag.fromJson(item);
-            await DBService.instance.tagBox.put(tag.id, tag);
-            // 插入之后验证
-            var insertedTag = DBService.instance.tagBox.get(tag.id);
-            Log.i('Inserted tag: ${insertedTag?.tag}');
+            tags.add(tag);
           }
+          await DBService.instance.tagBox.putAll({
+            for (final tag in tags) tag.id: tag,
+          });
           EventBus.instance.emit(Constant.kUpdateFollow, 0);
           Log.i('已同步用户自定义标签');
         } catch (e) {

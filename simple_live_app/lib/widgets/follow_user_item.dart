@@ -15,6 +15,7 @@ class FollowUserItem extends StatelessWidget {
   final Function()? onTap;
   final Function()? onLongPress;
   final bool playing;
+  final bool showSpecialMark;
   const FollowUserItem({
     required this.item,
     this.onRemove,
@@ -22,6 +23,7 @@ class FollowUserItem extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.playing = false,
+    this.showSpecialMark = false,
     Key? key,
   }) : super(key: key);
 
@@ -128,7 +130,17 @@ class FollowUserItem extends StatelessWidget {
               ),
             )
           : (onRemove == null
-              ? null
+              ? (showSpecialMark && item.isSpecialFollow
+                  ? const SizedBox(
+                      width: 48,
+                      child: Center(
+                        child: Icon(
+                          Icons.star,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    )
+                  : null)
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -157,13 +169,10 @@ class FollowUserItem extends StatelessWidget {
   }
 
   String getStatus(int status) {
-    if (status == 0) {
-      return "读取中";
-    } else if (status == 1) {
+    if (status != 2) {
       return "未开播";
-    } else {
-      return "直播中";
     }
+    return "直播中";
   }
 
   String formatLiveDuration(String? startTimeStampString) {

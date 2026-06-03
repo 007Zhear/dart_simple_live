@@ -205,7 +205,7 @@ class SyncService extends GetxService {
           int.parse(request.requestedUri.queryParameters['overlay'] ?? '0');
 
       var body = await request.readAsString();
-      Log.d('_syncFollowUserReuqest: $body');
+      Log.d('_syncFollowUserReuqest: ${body.length} bytes');
       var jsonBody = json.decode(body);
       if (jsonBody is! List) {
         throw const FormatException("关注列表格式不是数组");
@@ -228,9 +228,7 @@ class SyncService extends GetxService {
       if (overlay == 1) {
         await DBService.instance.followBox.clear();
       }
-      for (var user in users) {
-        await DBService.instance.followBox.put(user.id, user);
-      }
+      await DBService.instance.addFollows(users);
 
       SmartDialog.showToast('已同步关注用户列表（${users.length} 条）');
       EventBus.instance.emit(Constant.kUpdateFollow, 0);
@@ -252,7 +250,7 @@ class SyncService extends GetxService {
       var overlay =
           int.parse(request.requestedUri.queryParameters['overlay'] ?? '0');
       var body = await request.readAsString();
-      Log.d('_syncFollowUserReuqest: $body');
+      Log.d('_syncHistoryReuqest: ${body.length} bytes');
       var jsonBody = json.decode(body);
       if (jsonBody is! List) {
         throw const FormatException("历史记录格式不是数组");

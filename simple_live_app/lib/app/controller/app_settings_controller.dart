@@ -228,6 +228,25 @@ class AppSettingsController extends GetxController {
     updateFollowThreadCount.value = LocalStorageService.instance.getValue(
         LocalStorageService.kUpdateFollowThreadCount, 8); // 默认 8，0 = 自动
 
+    lastSearchSiteId.value = LocalStorageService.instance.getValue(
+      LocalStorageService.kLastSearchSiteId,
+      Constant.kBiliBili,
+    );
+
+    followGroupMode.value = LocalStorageService.instance.getValue(
+      LocalStorageService.kFollowGroupMode,
+      "liveStatus",
+    );
+    followSelectedGroupId.value = LocalStorageService.instance.getValue(
+      LocalStorageService.kFollowSelectedGroupId,
+      "all",
+    );
+
+    rememberWindowPlacement.value = LocalStorageService.instance.getValue(
+      LocalStorageService.kRememberWindowPlacement,
+      false,
+    );
+
     initSiteSort();
     initHomeSort();
     initLiveRoomTabSort();
@@ -1670,6 +1689,100 @@ class AppSettingsController extends GetxController {
       liveRoomQuickAccessEnabled.join(","),
     );
   }
+
+  var lastSearchSiteId = Constant.kBiliBili.obs;
+  void setLastSearchSiteId(String siteId) {
+    if (!Sites.allSites.containsKey(siteId)) {
+      return;
+    }
+    lastSearchSiteId.value = siteId;
+    LocalStorageService.instance.setValue(
+      LocalStorageService.kLastSearchSiteId,
+      siteId,
+    );
+  }
+
+  var followGroupMode = "liveStatus".obs;
+  var followSelectedGroupId = "all".obs;
+
+  void setFollowGroupSelection({
+    required String mode,
+    required String groupId,
+  }) {
+    followGroupMode.value = mode;
+    followSelectedGroupId.value = groupId;
+    LocalStorageService.instance.setValue(
+      LocalStorageService.kFollowGroupMode,
+      mode,
+    );
+    LocalStorageService.instance.setValue(
+      LocalStorageService.kFollowSelectedGroupId,
+      groupId,
+    );
+  }
+
+  var rememberWindowPlacement = false.obs;
+  void setRememberWindowPlacement(bool value) {
+    rememberWindowPlacement.value = value;
+    LocalStorageService.instance.setValue(
+      LocalStorageService.kRememberWindowPlacement,
+      value,
+    );
+  }
+
+  Future<void> setDesktopWindowPlacement({
+    required Rect bounds,
+    required bool maximized,
+  }) async {
+    await LocalStorageService.instance.setValue(
+      LocalStorageService.kDesktopWindowBounds,
+      jsonEncode({
+        "left": bounds.left,
+        "top": bounds.top,
+        "width": bounds.width,
+        "height": bounds.height,
+      }),
+    );
+    await LocalStorageService.instance.setValue(
+      LocalStorageService.kDesktopWindowMaximized,
+      maximized,
+    );
+  }
+
+  Rect? getDesktopWindowBounds() {
+    final raw = LocalStorageService.instance.getValue(
+      LocalStorageService.kDesktopWindowBounds,
+      "",
+    );
+    if (raw.trim().isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return null;
+      }
+      final left = (decoded["left"] as num?)?.toDouble();
+      final top = (decoded["top"] as num?)?.toDouble();
+      final width = (decoded["width"] as num?)?.toDouble();
+      final height = (decoded["height"] as num?)?.toDouble();
+      if (left == null || top == null || width == null || height == null) {
+        return null;
+      }
+      if (width < 280 || height < 280) {
+        return null;
+      }
+      return Rect.fromLTWH(left, top, width, height);
+    } catch (e) {
+      Log.logPrint(e);
+      return null;
+    }
+  }
+
+  bool get desktopWindowMaximized => LocalStorageService.instance.getValue(
+        LocalStorageService.kDesktopWindowMaximized,
+        false,
+      );
 
   Rx<double> playerVolume = 100.0.obs;
   void setPlayerVolume(double value) {

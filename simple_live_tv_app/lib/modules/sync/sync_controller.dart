@@ -144,9 +144,7 @@ class SyncController extends BaseController {
       if (overlay) {
         await DBService.instance.followBox.clear();
       }
-      for (var user in users) {
-        await DBService.instance.followBox.put(user.id, user);
-      }
+      await DBService.instance.addFollows(users);
       EventBus.instance.emit(Constant.kUpdateFollow, 0);
       SmartDialog.showToast("已同步关注列表（${users.length} 条）");
     } catch (e) {

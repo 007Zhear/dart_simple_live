@@ -1,5 +1,5 @@
 name: simple_live_app
-version: 1.12.4+11204
+version: 1.12.5+11205
 publish_to: none
 description: "Simple Live APP"
 environment:
@@ -56,6 +56,7 @@ dependencies:
   wakelock_plus: ^1.4.0 #屏幕常亮
   file_picker: ^10.3.7 #文件选择
   window_manager: ^0.5.1 #窗口管理
+  screen_retriever: ^0.2.0 #屏幕范围
   floating: ^6.0.0 #PIP画中画
   flutter_inappwebview: ^6.1.5 #WebView
   connectivity_plus: 7.0.0 #网络状态
@@ -105,5 +106,6 @@ flutter:
   assets:
     - assets/statement.txt
     - assets/images/
+    - assets/images/douyin_emoji/
     - assets/icons/
     - assets/lotties/

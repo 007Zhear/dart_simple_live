@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:simple_live_core/simple_live_core.dart';
 import 'package:simple_live_core/src/common/web_socket_util.dart';
+import 'package:simple_live_core/src/danmaku/douyin_emoji_assets.dart';
 import 'package:simple_live_core/src/scripts/douyin_sign.dart';
 
 import 'proto/douyin.pb.dart';
@@ -164,10 +165,12 @@ class DouyinDanmaku implements LiveDanmaku {
   void unPackWebcastChatMessage(List<int> payload) {
     var chatMessage = ChatMessage.fromBuffer(payload);
     final spans = _extractRtfSpans(chatMessage);
+    if (spans.isEmpty) {
+      _appendTextWithEmojiFallback(spans, chatMessage.content);
+    }
     final imageUrls = spans
         .where((item) => item.isImage)
         .map((item) => item.imageUrl!.trim())
-        .toSet()
         .toList();
     final message = _buildChatMessageText(chatMessage, spans);
     onMessage?.call(
@@ -210,12 +213,12 @@ class DouyinDanmaku implements LiveDanmaku {
     }
     for (final piece in chatMessage.rtfContent.piecesList) {
       if (piece.stringValue.trim().isNotEmpty) {
-        spans.add(LiveMessageSpan.text(piece.stringValue));
+        _appendTextWithEmojiFallback(spans, piece.stringValue);
       }
       if (piece.hasPatternRefValue()) {
         final pattern = piece.patternRefValue.defaultPattern.trim();
         if (pattern.isNotEmpty) {
-          spans.add(LiveMessageSpan.text(pattern));
+          _appendTextWithEmojiFallback(spans, pattern);
         }
       }
       if (piece.hasImageValue() && piece.imageValue.hasImage()) {
@@ -226,11 +229,36 @@ class DouyinDanmaku implements LiveDanmaku {
         }
         final fallback = _extractImageFallbackText(piece.imageValue.image);
         if (fallback != null) {
-          spans.add(LiveMessageSpan.text(fallback));
+          _appendTextWithEmojiFallback(spans, fallback);
         }
       }
     }
     return spans;
+  }
+
+  void _appendTextWithEmojiFallback(List<LiveMessageSpan> spans, String text) {
+    if (text.isEmpty) {
+      return;
+    }
+    var start = 0;
+    for (final match in RegExp(r'\[[^\[\]]{1,16}\]').allMatches(text)) {
+      final token = match.group(0);
+      if (token == null) {
+        continue;
+      }
+      final asset = douyinEmojiAssets[token];
+      if (asset == null) {
+        continue;
+      }
+      if (match.start > start) {
+        spans.add(LiveMessageSpan.text(text.substring(start, match.start)));
+      }
+      spans.add(LiveMessageSpan.image(asset));
+      start = match.end;
+    }
+    if (start < text.length) {
+      spans.add(LiveMessageSpan.text(text.substring(start)));
+    }
   }
 
   String? _extractImageUrl(Image image) {

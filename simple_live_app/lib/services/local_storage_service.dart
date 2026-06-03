@@ -13,6 +13,12 @@ class LocalStorageService extends GetxService {
   static const String kLiveRoomQuickAccessSort = "LiveRoomQuickAccessSort";
   static const String kLiveRoomQuickAccessEnabled =
       "LiveRoomQuickAccessEnabled";
+  static const String kLastSearchSiteId = "LastSearchSiteId";
+  static const String kFollowGroupMode = "FollowGroupMode";
+  static const String kFollowSelectedGroupId = "FollowSelectedGroupId";
+  static const String kRememberWindowPlacement = "RememberWindowPlacement";
+  static const String kDesktopWindowBounds = "DesktopWindowBounds";
+  static const String kDesktopWindowMaximized = "DesktopWindowMaximized";
   static const String kThemeMode = "ThemeMode";
   static const String kDebugModeKey = "DebugMode";
   static const String kDanmuSize = "DanmuSize";

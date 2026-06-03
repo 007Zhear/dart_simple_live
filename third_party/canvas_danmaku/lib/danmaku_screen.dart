@@ -144,7 +144,10 @@ class _DanmakuScreenState extends State<DanmakuScreen>
         continue;
       }
       _loadingEmojiImageUrls.add(value);
-      final stream = NetworkImage(value).resolve(ImageConfiguration.empty);
+      final imageProvider = value.startsWith("asset://")
+          ? AssetImage(value.substring("asset://".length))
+          : NetworkImage(value) as ImageProvider;
+      final stream = imageProvider.resolve(ImageConfiguration.empty);
       late ImageStreamListener listener;
       listener = ImageStreamListener(
         (info, _) {

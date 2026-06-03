@@ -12,6 +12,7 @@ import 'package:logger/logger.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:simple_live_app/app/app_style.dart';
 import 'package:simple_live_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_app/app/log.dart';
@@ -50,6 +51,7 @@ void main(List<String> args) async {
   await Hive.initFlutter(await resolveHivePath(args));
   //初始化服务
   await initServices();
+  await setupDesktopWindowLifecycle();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   //设置状态栏为透明
   SystemUiOverlayStyle systemUiOverlayStyle = const SystemUiOverlayStyle(
@@ -106,8 +108,7 @@ Future<void> copyHiveSnapshot(Directory sourceDir, Directory targetDir) async {
     }
     final fileName = p.basename(entity.path);
     final lowerFileName = fileName.toLowerCase();
-    if (!lowerFileName.endsWith(".hive") &&
-        !lowerFileName.endsWith(".hivec")) {
+    if (!lowerFileName.endsWith(".hive") && !lowerFileName.endsWith(".hivec")) {
       continue;
     }
     try {
@@ -190,13 +191,218 @@ Future initWindow() async {
   await windowManager.ensureInitialized();
   WindowOptions windowOptions = const WindowOptions(
     minimumSize: Size(280, 280),
-    center: true,
     title: "Simple Live",
   );
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+  await windowManager.waitUntilReadyToShow(windowOptions);
+}
+
+final _desktopWindowLifecycle = _DesktopWindowLifecycle();
+
+Future<void> setupDesktopWindowLifecycle() async {
+  if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+    return;
+  }
+  windowManager.addListener(_desktopWindowLifecycle);
+  if (Platform.isWindows) {
+    await windowManager.setPreventClose(true);
+  }
+  await _desktopWindowLifecycle.restoreWindowPlacement();
+  await windowManager.show();
+  await windowManager.focus();
+}
+
+class _DesktopWindowLifecycle with WindowListener {
+  bool _closing = false;
+  bool _restoring = false;
+  Timer? _saveTimer;
+
+  Future<void> restoreWindowPlacement() async {
+    _restoring = true;
+    try {
+      final settings = AppSettingsController.instance;
+      if (settings.rememberWindowPlacement.value) {
+        final bounds = await _validSavedBounds();
+        if (bounds != null) {
+          await windowManager.setBounds(bounds);
+        } else {
+          await windowManager.center();
+        }
+        if (settings.desktopWindowMaximized) {
+          await windowManager.maximize();
+        }
+      } else {
+        await windowManager.center();
+      }
+    } catch (e) {
+      Log.logPrint(e);
+      await windowManager.center();
+    } finally {
+      _restoring = false;
+    }
+  }
+
+  Future<Rect?> _validSavedBounds() async {
+    final bounds = AppSettingsController.instance.getDesktopWindowBounds();
+    if (bounds == null) {
+      return null;
+    }
+    final displays = await screenRetriever.getAllDisplays();
+    for (final display in displays) {
+      final displayRect = Rect.fromLTWH(
+        display.visiblePosition?.dx ?? 0,
+        display.visiblePosition?.dy ?? 0,
+        display.visibleSize?.width ?? display.size.width,
+        display.visibleSize?.height ?? display.size.height,
+      );
+      if (!displayRect.contains(bounds.center)) {
+        continue;
+      }
+      final width = bounds.width.clamp(280.0, displayRect.width).toDouble();
+      final height = bounds.height.clamp(280.0, displayRect.height).toDouble();
+      final left = bounds.left
+          .clamp(displayRect.left, displayRect.right - width)
+          .toDouble();
+      final top = bounds.top
+          .clamp(displayRect.top, displayRect.bottom - height)
+          .toDouble();
+      return Rect.fromLTWH(left, top, width, height);
+    }
+    return null;
+  }
+
+  void _scheduleSave() {
+    if (_restoring || _closing) {
+      return;
+    }
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 150), () {
+      unawaited(saveWindowPlacement());
+    });
+  }
+
+  Future<void> saveWindowPlacement() async {
+    if (!AppSettingsController.instance.rememberWindowPlacement.value) {
+      return;
+    }
+    try {
+      final liveRoom = Get.isRegistered<LiveRoomController>()
+          ? Get.find<LiveRoomController>()
+          : null;
+      if (liveRoom?.smallWindowState.value == true ||
+          await windowManager.isFullScreen()) {
+        return;
+      }
+      final maximized = await windowManager.isMaximized();
+      final previousBounds =
+          AppSettingsController.instance.getDesktopWindowBounds();
+      final bounds = maximized
+          ? previousBounds ?? await windowManager.getBounds()
+          : await windowManager.getBounds();
+      await AppSettingsController.instance.setDesktopWindowPlacement(
+        bounds: bounds,
+        maximized: maximized,
+      );
+    } catch (e) {
+      Log.logPrint(e);
+    }
+  }
+
+  @override
+  void onWindowMoved() {
+    _scheduleSave();
+  }
+
+  @override
+  void onWindowResized() {
+    _scheduleSave();
+  }
+
+  @override
+  void onWindowMaximize() {
+    _scheduleSave();
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    _scheduleSave();
+  }
+
+  @override
+  void onWindowClose() {
+    if (_closing) {
+      return;
+    }
+    _closing = true;
+    if (Platform.isWindows) {
+      _closeWindowsFast();
+      return;
+    }
+    unawaited(_closeApp());
+  }
+
+  void _closeWindowsFast() {
+    _saveTimer?.cancel();
+    windowManager.removeListener(this);
+    _closeStepSync("关闭同步服务", () {
+      if (Get.isRegistered<SyncService>()) {
+        SyncService.instance.onClose();
+      }
+    });
+    _closeStepSync("关闭日志写入", Log.disposeWriter);
+    unawaited(windowManager.hide());
+    Timer(const Duration(milliseconds: 80), () {
+      exit(0);
+    });
+  }
+
+  Future<void> _closeApp() async {
+    _saveTimer?.cancel();
+    await _closeStep(
+      "保存窗口位置",
+      saveWindowPlacement,
+      timeout: const Duration(milliseconds: 300),
+    );
+    await _closeStep(
+      "关闭播放器",
+      () async {
+        if (Get.isRegistered<LiveRoomController>()) {
+          await Get.find<LiveRoomController>().closePlayerResources();
+        }
+      },
+      timeout: const Duration(milliseconds: 900),
+    );
+    _closeStepSync("关闭同步服务", () {
+      if (Get.isRegistered<SyncService>()) {
+        SyncService.instance.onClose();
+      }
+    });
+    _closeStepSync("关闭日志写入", Log.disposeWriter);
+
+    windowManager.removeListener(this);
+    await windowManager.destroy();
+  }
+
+  Future<void> _closeStep(
+    String name,
+    FutureOr<void> Function() action, {
+    required Duration timeout,
+  }) async {
+    try {
+      await Future.sync(action).timeout(timeout);
+    } on TimeoutException {
+      Log.logPrint("$name超时，继续退出");
+    } catch (e) {
+      Log.logPrint(e);
+    }
+  }
+
+  void _closeStepSync(String name, void Function() action) {
+    try {
+      action();
+    } catch (e) {
+      Log.logPrint("$name失败: $e");
+    }
+  }
 }
 
 Future initServices() async {

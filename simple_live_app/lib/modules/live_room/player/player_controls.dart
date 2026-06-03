@@ -1052,7 +1052,7 @@ Widget _buildQuickAccessTile(LiveRoomController controller, String key) {
       key != "recommendation" || controller.hasCategoryRecommendation;
   return ListTile(
     leading: Icon(item.iconData),
-    title: Text(item.title),
+    title: Text(controller.quickAccessTitle(key)),
     subtitle: Text(controller.quickAccessSubtitle(key)),
     enabled: enabled,
     onTap: !enabled
@@ -1075,6 +1075,9 @@ void _openQuickAccessItem(LiveRoomController controller, String key) {
       break;
     case "recommendation":
       controller.openCategoryRecommendation();
+      break;
+    case "contribution_rank":
+      controller.showContributionRankSheet();
       break;
   }
 }

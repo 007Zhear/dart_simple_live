@@ -442,6 +442,7 @@ class ProfileBackupService extends GetxService {
     if (rawUsers is! List) {
       return;
     }
+    final users = <FollowUser>[];
     for (final item in rawUsers) {
       if (item is! Map) {
         continue;
@@ -452,12 +453,13 @@ class ProfileBackupService extends GetxService {
           summary.skipped++;
           continue;
         }
-        await DBService.instance.followBox.put(user.id, user);
+        users.add(user);
         summary.followUsers++;
       } catch (_) {
         summary.skipped++;
       }
     }
+    await DBService.instance.addFollows(users);
   }
 
   Future<void> _importFollowTags(
@@ -471,6 +473,7 @@ class ProfileBackupService extends GetxService {
     if (rawTags is! List) {
       return;
     }
+    final tags = <FollowUserTag>[];
     for (final item in rawTags) {
       if (item is! Map) {
         continue;
@@ -481,12 +484,15 @@ class ProfileBackupService extends GetxService {
           summary.skipped++;
           continue;
         }
-        await DBService.instance.tagBox.put(tag.id, tag);
+        tags.add(tag);
         summary.followTags++;
       } catch (_) {
         summary.skipped++;
       }
     }
+    await DBService.instance.tagBox.putAll({
+      for (final tag in tags) tag.id: tag,
+    });
   }
 
   Future<void> _importHistories(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:simple_live_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_app/app/sites.dart';
 import 'package:simple_live_app/modules/search/search_list_controller.dart';
 
@@ -10,7 +11,6 @@ class AppSearchController extends GetxController
     with GetSingleTickerProviderStateMixin {
   late TabController tabController;
   int index = 0;
-  static String? _lastSiteId;
 
   var searchMode = 0.obs;
 
@@ -22,7 +22,7 @@ class AppSearchController extends GetxController
       vsync: this,
       initialIndex: initialIndex,
     );
-    _lastSiteId = Sites.supportSites[index].id;
+    AppSettingsController.instance.setLastSearchSiteId(Sites.supportSites[index].id);
     tabController.animation?.addListener(() {
       var currentIndex = (tabController.animation?.value ?? 0).round();
       if (index == currentIndex) {
@@ -30,7 +30,7 @@ class AppSearchController extends GetxController
       }
 
       index = currentIndex;
-      _lastSiteId = Sites.supportSites[index].id;
+      AppSettingsController.instance.setLastSearchSiteId(Sites.supportSites[index].id);
       // if (Sites.supportSites[index].id == Constant.kDouyin) {
       //   return;
       // }
@@ -58,7 +58,7 @@ class AppSearchController extends GetxController
     } else if (args is String) {
       siteId = args;
     }
-    siteId ??= _lastSiteId;
+    siteId ??= AppSettingsController.instance.lastSearchSiteId.value;
     final resolvedIndex =
         Sites.supportSites.indexWhere((site) => site.id == siteId);
     return resolvedIndex < 0 ? 0 : resolvedIndex;

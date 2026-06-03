@@ -20,6 +20,7 @@ import 'package:simple_live_app/app/utils.dart';
 import 'package:simple_live_app/models/db/follow_user.dart';
 import 'package:simple_live_app/models/db/history.dart';
 import 'package:simple_live_app/modules/live_room/player/player_controller.dart';
+import 'package:simple_live_app/modules/live_room/widgets/live_contribution_rank_panel.dart';
 import 'package:simple_live_app/modules/settings/danmu_settings_page.dart';
 import 'package:simple_live_app/routes/app_navigation.dart';
 import 'package:simple_live_app/routes/route_path.dart';
@@ -1816,15 +1817,48 @@ class LiveRoomController extends PlayerController
     return settings.liveRoomQuickAccessSort
         .where((key) =>
             settings.liveRoomQuickAccessEnabled.contains(key) &&
-            Constant.allLiveRoomQuickAccess.containsKey(key))
+            Constant.allLiveRoomQuickAccess.containsKey(key) &&
+            (key != "contribution_rank" ||
+                (supportsContributionRank &&
+                    settings.contributionRankEnable.value)))
         .toList();
+  }
+
+  String quickAccessTitle(String key) {
+    if (key == "contribution_rank") {
+      return site.id == Constant.kDouyu ? "亲密榜" : "贡献榜";
+    }
+    return Constant.allLiveRoomQuickAccess[key]?.title ?? "";
   }
 
   String quickAccessSubtitle(String key) {
     if (key == "recommendation") {
       return currentRecommendationSubtitle;
     }
+    if (key == "contribution_rank") {
+      if (!supportsContributionRank) {
+        return "当前平台暂无贡献榜";
+      }
+      return site.id == Constant.kDouyu ? "打开当前直播间亲密榜" : "打开当前直播间贡献榜";
+    }
     return Constant.allLiveRoomQuickAccess[key]?.subtitle ?? "";
+  }
+
+  void showContributionRankSheet() {
+    if (!supportsContributionRank) {
+      return;
+    }
+    if (!AppSettingsController.instance.contributionRankEnable.value) {
+      return;
+    }
+    fetchContributionRank(forceRefresh: true);
+    Utils.showBottomSheet(
+      title: site.id == Constant.kDouyu ? "亲密榜" : "贡献榜",
+      child: SizedBox(
+        height: Get.height * 0.75,
+        child: LiveContributionRankPanel(controller: this),
+      ),
+    );
   }
 
   Widget buildHistorySelection({
@@ -2183,7 +2217,7 @@ class LiveRoomController extends PlayerController
           final enabled = key != "recommendation" || hasCategoryRecommendation;
           return ListTile(
             leading: Icon(item.iconData),
-            title: Text(item.title),
+            title: Text(quickAccessTitle(key)),
             subtitle: Text(quickAccessSubtitle(key)),
             enabled: enabled,
             onTap: !enabled
@@ -2199,6 +2233,9 @@ class LiveRoomController extends PlayerController
                         break;
                       case "recommendation":
                         openCategoryRecommendation();
+                        break;
+                      case "contribution_rank":
+                        showContributionRankSheet();
                         break;
                     }
                   },
@@ -2270,6 +2307,7 @@ class LiveRoomController extends PlayerController
                       return Obx(
                         () => FollowUserItem(
                           item: item,
+                          showSpecialMark: true,
                           playing: rxSite.value.id == item.siteId &&
                               rxRoomId.value == item.roomId,
                           onTap: () {

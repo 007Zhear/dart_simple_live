@@ -15,7 +15,6 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 class AccountController extends GetxController {
   static const _douyinHomeUrl = "https://www.douyin.com/";
-  static const _douyinAppUrl = "snssdk1128://";
 
   final douyinCookieCountdownTick = 0.obs;
   Timer? _douyinCookieCountdownTimer;
@@ -114,32 +113,17 @@ class AccountController extends GetxController {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            leading: Icon(
-              Platform.isAndroid || Platform.isIOS
-                  ? Icons.phone_android
-                  : Icons.open_in_browser,
-            ),
-            title: Text(
-              Platform.isAndroid || Platform.isIOS
-                  ? "打开抖音 App"
-                  : "浏览器登录后粘贴 Cookie",
-            ),
-            subtitle: Text(
-              Platform.isAndroid || Platform.isIOS
-                  ? "手机网页会引导下载 App；Cookie 请从电脑浏览器获取完整 Cookie 后粘贴或同步"
-                  : "使用系统浏览器打开抖音，登录后回到这里粘贴完整 Cookie",
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              Get.back();
-              if (Platform.isAndroid || Platform.isIOS) {
-                await openDouyinApp();
-              } else {
+          if (!Platform.isAndroid && !Platform.isIOS)
+            ListTile(
+              leading: const Icon(Icons.open_in_browser),
+              title: const Text("浏览器登录后粘贴 Cookie"),
+              subtitle: const Text("使用系统浏览器打开抖音，登录后回到这里粘贴完整 Cookie"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Get.back();
                 await openDouyinInBrowserThenConfigCookie();
-              }
-            },
-          ),
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.edit_outlined),
             title: const Text("Cookie登录"),
@@ -202,33 +186,6 @@ class AccountController extends GetxController {
       SmartDialog.showToast("无法打开系统浏览器，请手动打开 www.douyin.com 后粘贴 Cookie");
     }
     doDouyinCookieConfig();
-  }
-
-  Future<void> openDouyinApp() async {
-    var opened = false;
-    try {
-      opened = await launchUrlString(
-        _douyinAppUrl,
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {
-      opened = false;
-    }
-    if (!opened && Platform.isAndroid) {
-      try {
-        opened = await launchUrlString(
-          "market://details?id=com.ss.android.ugc.aweme",
-          mode: LaunchMode.externalApplication,
-        );
-      } catch (_) {
-        opened = false;
-      }
-    }
-    if (!opened) {
-      SmartDialog.showToast("无法打开抖音 App，请确认已安装");
-      return;
-    }
-    SmartDialog.showToast("已打开抖音 App；搜索所需 Cookie 仍需粘贴完整网页登录 Cookie");
   }
 
   Future<void> importDouyinCookieFromFile() async {

@@ -1,7 +1,7 @@
 {
-    "version": "1.7.5",
-    "version_num": 10705,
-    "version_desc": "- 关注刷新并发默认改为 8，保留 0=自动并发\n- 抖音账号页明确 TV 端需从手机/电脑端同步网页登录 Cookie\n- 修正版本与 release tag 为 tv_1.7.5",
+    "version": "1.7.6",
+    "version_num": 10706,
+    "version_desc": "- 完善抖音直播弹幕本地表情显示，内置 141 个抖音平台表情资源\n- TV 端关注列表改为分页加载，避免大量关注一次性渲染导致闪退\n- 关注刷新加入冷却和任务互斥，避免连续刷新叠加大量网络任务\n- 同步关注列表改为批量写入，并避免日志打印完整大 JSON\n- NetImage 和弹幕画布支持本地 asset 表情资源",
     "prerelease": true,
-    "download_url": "https://github.com/June6699/dart_simple_live/releases/tag/tv_1.7.5"
+    "download_url": "https://github.com/June6699/dart_simple_live/releases/tag/tv_v1.7.6-pre"
 }

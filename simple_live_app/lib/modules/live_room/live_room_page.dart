@@ -582,8 +582,6 @@ class LiveRoomPage extends GetView<LiveRoomController> {
     return Obx(() {
       final hasSuperChatTab = controller.site.id == Constant.kBiliBili ||
           controller.site.id == Constant.kHuya;
-      final hasContributionRankTab = controller.supportsContributionRank &&
-          AppSettingsController.instance.contributionRankEnable.value;
       final tabs = <Widget>[];
       final pages = <Widget>[];
       void addTab(String key) {
@@ -611,6 +609,22 @@ class LiveRoomPage extends GetView<LiveRoomController> {
             tabs.add(const Tab(text: "关注"));
             pages.add(buildFollowList());
             break;
+          case "contribution_rank":
+            if (!controller.supportsContributionRank ||
+                !AppSettingsController.instance.contributionRankEnable.value) {
+              return;
+            }
+            tabs.add(
+              Tab(
+                text: controller.site.id == Constant.kDouyu ? "亲密榜" : "贡献榜",
+              ),
+            );
+            pages.add(
+              KeepAliveWrapper(
+                child: LiveContributionRankPanel(controller: controller),
+              ),
+            );
+            break;
           case "settings":
             tabs.add(const Tab(text: "设置"));
             pages.add(buildSettings());
@@ -620,18 +634,6 @@ class LiveRoomPage extends GetView<LiveRoomController> {
 
       for (final key in AppSettingsController.instance.liveRoomTabSort) {
         addTab(key);
-      }
-      if (hasContributionRankTab) {
-        tabs.add(
-          Tab(
-            text: controller.site.id == Constant.kDouyu ? "亲密榜" : "贡献榜",
-          ),
-        );
-        pages.add(
-          KeepAliveWrapper(
-            child: LiveContributionRankPanel(controller: controller),
-          ),
-        );
       }
       return Expanded(
         child: DefaultTabController(
@@ -1031,10 +1033,7 @@ class LiveRoomPage extends GetView<LiveRoomController> {
       ),
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          bottom: AppStyle.bottomBarHeight + _bottomSafeInset(context),
-        ),
+      builder: (context) => Utils.bottomSheetSafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1356,8 +1355,7 @@ class LiveRoomPage extends GetView<LiveRoomController> {
       isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (_) => SafeArea(
-        top: false,
+      builder: (context) => Utils.bottomSheetSafeArea(
         child: ListView(
           shrinkWrap: true,
           padding: AppStyle.edgeInsetsA12.copyWith(

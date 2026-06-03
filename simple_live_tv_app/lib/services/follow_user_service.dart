@@ -14,12 +14,20 @@ import 'package:simple_live_tv_app/models/db/follow_user.dart';
 import 'package:simple_live_tv_app/services/db_service.dart';
 
 class FollowUserService extends BasePageController<FollowUser> {
+  static const Duration updateStatusCooldown = Duration(seconds: 30);
   static FollowUserService get instance => Get.find<FollowUserService>();
   StreamSubscription<dynamic>? subscription;
 
+  RxList<FollowUser> allList = RxList<FollowUser>();
   RxList<FollowUser> livingList = RxList<FollowUser>();
   Timer? updateTimer;
   bool needUpdate = true;
+  int _updateGeneration = 0;
+  DateTime? _lastUpdateStatusStartedAt;
+
+  FollowUserService() {
+    pageSize = 60;
+  }
   @override
   void onInit() {
     subscription = EventBus.instance.listen(Constant.kUpdateFollow, (p0) {
@@ -55,28 +63,44 @@ class FollowUserService extends BasePageController<FollowUser> {
   var updating = false.obs;
   @override
   Future<List<FollowUser>> getData(int page, int pageSize) async {
-    if (page > 1) {
+    if (page == 1) {
+      allList.assignAll(_sortFollowUsers(DBService.instance.getFollowList()));
+      updateLivingList();
+      if (needUpdate) {
+        unawaited(startUpdateStatus(allList.toList()));
+      }
+      needUpdate = true;
+      if (allList.isEmpty) {
+        updating.value = false;
+      }
+    }
+    final start = (page - 1) * pageSize;
+    if (start >= allList.length) {
       return [];
     }
-
-    var followList = DBService.instance.getFollowList();
-    if (needUpdate) {
-      startUpdateStatus(followList);
-    }
-    needUpdate = true;
-    if (followList.isEmpty) {
-      updating.value = false;
-    }
-    return followList;
+    final end = (start + pageSize).clamp(0, allList.length).toInt();
+    return allList.sublist(start, end);
   }
 
   void sortList() {
-    list.sort((a, b) => b.liveStatus.value.compareTo(a.liveStatus.value));
+    allList.assignAll(_sortFollowUsers(allList));
+    final preferredCount = list.isEmpty ? pageSize : list.length;
+    final visibleCount = preferredCount.clamp(0, allList.length).toInt();
+    list.assignAll(allList.take(visibleCount));
+    currentPage = visibleCount < allList.length
+        ? (visibleCount ~/ pageSize) + 1
+        : currentPage;
+    canLoadMore.value = visibleCount < allList.length;
     updateLivingList();
   }
 
+  List<FollowUser> _sortFollowUsers(Iterable<FollowUser> items) {
+    return items.toList()
+      ..sort((a, b) => b.liveStatus.value.compareTo(a.liveStatus.value));
+  }
+
   void updateLivingList() {
-    livingList.assignAll(list.where((x) => x.liveStatus.value == 2));
+    livingList.assignAll(allList.where((x) => x.liveStatus.value == 2));
   }
 
   /// 获取最优并发数
@@ -90,7 +114,7 @@ class FollowUserService extends BasePageController<FollowUser> {
       var cpuCount = Platform.numberOfProcessors;
       concurrency = (cpuCount * 2.5).round().clamp(4, 20);
     } else {
-      concurrency = userSetting;
+      concurrency = userSetting.clamp(1, 20);
     }
 
     if (total > 0 && concurrency > total) {
@@ -118,7 +142,25 @@ class FollowUserService extends BasePageController<FollowUser> {
     return result;
   }
 
-  void startUpdateStatus(List<FollowUser> followList) async {
+  Future<void> startUpdateStatus(
+    List<FollowUser> followList, {
+    bool force = false,
+  }) async {
+    final now = DateTime.now();
+    final lastStartedAt = _lastUpdateStatusStartedAt;
+    if (!force &&
+        lastStartedAt != null &&
+        now.difference(lastStartedAt) < updateStatusCooldown) {
+      Log.logPrint("关注状态刷新过于频繁，已跳过本次网络刷新");
+      updating.value = false;
+      sortList();
+      return;
+    }
+    _lastUpdateStatusStartedAt = now;
+    final generation = ++_updateGeneration;
+    if (updating.value) {
+      Log.logPrint("已有关注状态刷新任务，取消旧任务并启动新任务");
+    }
     updating.value = true;
 
     if (followList.isEmpty) {
@@ -134,8 +176,11 @@ class FollowUserService extends BasePageController<FollowUser> {
 
     Future<void> worker() async {
       while (taskQueue.isNotEmpty) {
+        if (generation != _updateGeneration) {
+          return;
+        }
         var item = taskQueue.removeFirst();
-        await updateLiveStatus(item);
+        await updateLiveStatus(item, generation: generation);
       }
     }
 
@@ -145,18 +190,27 @@ class FollowUserService extends BasePageController<FollowUser> {
     }
     await Future.wait(workers);
 
+    if (generation != _updateGeneration) {
+      return;
+    }
     sortList();
     updating.value = false;
 
     Log.logPrint("关注状态更新完成");
   }
 
-  Future updateLiveStatus(FollowUser item) async {
+  Future updateLiveStatus(FollowUser item, {int? generation}) async {
     try {
       var site = Sites.allSites[item.siteId]!;
-      item.liveStatus.value =
-          (await site.liveSite.getLiveStatus(roomId: item.roomId)) ? 2 : 1;
+      final isLiving = await site.liveSite.getLiveStatus(roomId: item.roomId);
+      if (generation != null && generation != _updateGeneration) {
+        return;
+      }
+      item.liveStatus.value = isLiving ? 2 : 1;
     } catch (e) {
+      if (generation != null && generation != _updateGeneration) {
+        return;
+      }
       Log.logPrint(e);
     }
   }
@@ -171,6 +225,7 @@ class FollowUserService extends BasePageController<FollowUser> {
     if (refresh) {
       refreshData();
     } else {
+      allList.remove(item);
       list.remove(item);
       livingList.remove(item);
     }
@@ -178,6 +233,8 @@ class FollowUserService extends BasePageController<FollowUser> {
 
   @override
   void onClose() {
+    _updateGeneration++;
+    updating.value = false;
     updateTimer?.cancel();
     subscription?.cancel();
 

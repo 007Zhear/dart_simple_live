@@ -20,6 +20,7 @@ import 'package:simple_live_app/services/db_service.dart';
 import 'package:simple_live_app/services/live_notification_service.dart';
 
 class FollowService extends GetxService {
+  static const Duration updateStatusCooldown = Duration(seconds: 30);
   StreamSubscription<dynamic>? subscription;
   static FollowService get instance => Get.find<FollowService>();
 
@@ -47,6 +48,8 @@ class FollowService extends GetxService {
   Timer? updateTimer;
   final Set<String> _liveNotifySentIds = <String>{};
   final Set<String> _liveNotifyReadyIds = <String>{};
+  int _updateGeneration = 0;
+  DateTime? _lastUpdateStatusStartedAt;
 
   @override
   void onInit() {
@@ -161,7 +164,7 @@ class FollowService extends GetxService {
     }
     followList.assignAll(list);
     if (updateStatus) {
-      startUpdateStatus();
+      unawaited(startUpdateStatus());
     }
   }
 
@@ -180,7 +183,7 @@ class FollowService extends GetxService {
       return optimal.clamp(4, 20);
     }
 
-    return userSetting;
+    return userSetting.clamp(1, 20);
   }
 
   /// 按平台交错排列，避免单一平台阻塞
@@ -204,7 +207,22 @@ class FollowService extends GetxService {
     return result;
   }
 
-  void startUpdateStatus() async {
+  Future<void> startUpdateStatus({bool force = false}) async {
+    final now = DateTime.now();
+    final lastStartedAt = _lastUpdateStatusStartedAt;
+    if (!force &&
+        lastStartedAt != null &&
+        now.difference(lastStartedAt) < updateStatusCooldown) {
+      Log.logPrint("关注状态刷新过于频繁，已跳过本次网络刷新");
+      updating.value = false;
+      filterData();
+      return;
+    }
+    _lastUpdateStatusStartedAt = now;
+    final generation = ++_updateGeneration;
+    if (updating.value) {
+      Log.logPrint("已有关注状态刷新任务，取消旧任务并启动新任务");
+    }
     updating.value = true;
 
     var concurrency = getOptimalConcurrency();
@@ -220,8 +238,11 @@ class FollowService extends GetxService {
     // 工作函数 - 持续从队列中取任务执行
     Future<void> worker(int workerId) async {
       while (taskQueue.isNotEmpty) {
+        if (generation != _updateGeneration) {
+          return;
+        }
         var item = taskQueue.removeFirst();
-        await updateLiveStatus(item);
+        await updateLiveStatus(item, generation: generation);
       }
     }
 
@@ -233,23 +254,32 @@ class FollowService extends GetxService {
 
     await Future.wait(workers);
 
+    if (generation != _updateGeneration) {
+      return;
+    }
     filterData();
     updating.value = false;
 
     Log.logPrint("关注状态更新完成");
   }
 
-  Future updateLiveStatus(FollowUser item) async {
+  Future updateLiveStatus(FollowUser item, {int? generation}) async {
     final previousStatus = item.liveStatus.value;
     final notifyReady = _liveNotifyReadyIds.contains(item.id);
     try {
       var site = Sites.allSites[item.siteId]!;
       // 先只查状态
       var isLiving = await site.liveSite.getLiveStatus(roomId: item.roomId);
+      if (generation != null && generation != _updateGeneration) {
+        return;
+      }
       item.liveStatus.value = isLiving ? 2 : 1;
       if (item.liveStatus.value == 2) {
         // 只有正在直播时才查详细信息
         var detail = await site.liveSite.getRoomDetail(roomId: item.roomId);
+        if (generation != null && generation != _updateGeneration) {
+          return;
+        }
         item.liveStartTime = detail.showTime;
       } else {
         item.liveStartTime = null;
@@ -265,6 +295,9 @@ class FollowService extends GetxService {
       }
       _liveNotifyReadyIds.add(item.id);
     } catch (e) {
+      if (generation != null && generation != _updateGeneration) {
+        return;
+      }
       Log.logPrint(e);
       item.liveStatus.value = 0;
       item.liveStartTime = null;
@@ -292,7 +325,7 @@ class FollowService extends GetxService {
       sortFollowUsers(followList.where((x) => x.liveStatus.value == 2)),
     );
     notLiveList.assignAll(
-      sortFollowUsers(followList.where((x) => x.liveStatus.value == 1)),
+      sortFollowUsers(followList.where((x) => x.liveStatus.value != 2)),
     );
     _updatedListController.add(0);
   }
@@ -352,7 +385,7 @@ class FollowService extends GetxService {
       Log.logPrint(e);
       SmartDialog.showToast("导入失败:$e");
     } finally {
-      loadData();
+      loadData(updateStatus: false);
     }
   }
 
@@ -432,7 +465,7 @@ class FollowService extends GetxService {
                 await inputJson(textController.text);
                 SmartDialog.showToast("导入成功");
                 Get.back();
-                loadData();
+                loadData(updateStatus: false);
               } catch (e) {
                 SmartDialog.showToast("导入失败，请检查内容是否正确");
               }
@@ -464,23 +497,45 @@ class FollowService extends GetxService {
 
   Future inputJson(String content) async {
     var data = jsonDecode(content);
+    if (data is! List) {
+      throw const FormatException("关注列表格式不是数组");
+    }
 
+    final follows = <FollowUser>[];
+    final tagMap = {
+      for (final tag in DBService.instance.getFollowTagList()) tag.tag: tag,
+    };
     for (var item in data) {
-      var follow = FollowUser.fromJson(item);
+      if (item is! Map) {
+        continue;
+      }
+      var follow = FollowUser.fromJson(Map<String, dynamic>.from(item));
+      if (follow.id.isEmpty || follow.roomId.isEmpty || follow.siteId.isEmpty) {
+        continue;
+      }
+      follows.add(follow);
       // 导入关注列表同时导入标签列表 此方法可优化为所有导入逻辑
       if (follow.tag != "全部") {
-        // logic: 尝试添加，存在则返回已存在的对象
-        var tag = await DBService.instance.addFollowTag(follow.tag);
+        var tag = tagMap[follow.tag];
+        if (tag == null) {
+          tag = await DBService.instance.addFollowTag(follow.tag);
+          tagMap[follow.tag] = tag;
+        }
         // 更新tag
         tag.userId.addIf(!tag.userId.contains(follow.id), follow.id);
-        await DBService.instance.updateFollowTag(tag);
       }
-      await DBService.instance.addFollow(follow);
     }
+    await DBService.instance.addFollows(follows);
+    await DBService.instance.tagBox.putAll({
+      for (final tag in tagMap.values.where((tag) => tag.tag != "全部"))
+        tag.id: tag,
+    });
   }
 
   @override
   void onClose() {
+    _updateGeneration++;
+    updating.value = false;
     updateTimer?.cancel();
     subscription?.cancel();
     super.onClose();

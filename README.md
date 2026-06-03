@@ -113,7 +113,7 @@ TV 下载建议：
 - 点开任意 `douyin.com` 请求，在 `Request Headers / 请求标头` 找到 `cookie`。
 - 复制 `cookie` 后面完整的一大串，粘贴到 SimpleLive 的抖音 Cookie 登录框。
 
-应用也兼容直接粘贴 `Cookie: xxx`，或粘贴浏览器复制出来的整段请求头；会自动从其中提取 `cookie` 字段。Android / iOS 端打开抖音官网通常会引导下载 App，因此手机端入口改为打开抖音 App，搜索 Cookie 建议仍从电脑浏览器获取后粘贴或同步。TV 端不内置浏览器，请从主 App 同步完整 Cookie。
+应用也兼容直接粘贴 `Cookie: xxx`，或粘贴浏览器复制出来的整段请求头；会自动从其中提取 `cookie` 字段。Android / iOS 端只保留粘贴 Cookie 和文件导入，搜索 Cookie 建议仍从电脑浏览器获取后粘贴或同步。TV 端不内置浏览器，请从主 App 同步完整 Cookie。
 
 抖音账号页会尝试从完整 Cookie 的 `sid_guard` 中解析预计剩余有效期；如果只配置了 `ttwid`，或请求头 Cookie 里没有可解析的过期信息，会提示有效期无法判断。Cookie 仍可能因退出登录、改密或平台风控提前失效。
 
@@ -203,6 +203,8 @@ TV 下载建议：
 [YunzhiYike/douyin-live](https://github.com/YunzhiYike/douyin-live)
 
 [5ime/Tiktok_Signature](https://github.com/5ime/Tiktok_Signature)
+
+[EmojiAll 抖音平台表情](https://www.emojiall.com/zh-hans/platform-douyin) `感谢提供抖音平台表情参考，项目内仅作为本地静态表情资源使用`
 
 ## 声明
 

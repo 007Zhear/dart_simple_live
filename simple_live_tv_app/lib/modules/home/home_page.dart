@@ -213,7 +213,7 @@ class HomePage extends GetView<HomeController> {
                 ),
                 Obx(
                   () => Visibility(
-                    visible: FollowUserService.instance.list.isEmpty,
+                    visible: FollowUserService.instance.allList.isEmpty,
                     child: Column(
                       children: [
                         AppStyle.vGap24,
@@ -287,11 +287,11 @@ class HomePage extends GetView<HomeController> {
               children: [
                 Obx(
                   () => ListView.separated(
-                    itemCount: FollowUserService.instance.list.length,
+                    itemCount: FollowUserService.instance.allList.length,
                     separatorBuilder: (_, __) => AppStyle.vGap24,
                     padding: AppStyle.edgeInsetsA40,
                     itemBuilder: (_, i) {
-                      var item = FollowUserService.instance.list[i];
+                      var item = FollowUserService.instance.allList[i];
                       var foucsNode = AppFocusNode();
                       return HighlightListTile(
                         autofocus: i == 0,
@@ -322,7 +322,7 @@ class HomePage extends GetView<HomeController> {
                 ),
                 Obx(
                   () => Visibility(
-                    visible: FollowUserService.instance.list.isEmpty,
+                    visible: FollowUserService.instance.allList.isEmpty,
                     child: const AppEmptyWidget(
                       text: "关注列表为空，快去关注一些主播吧",
                     ),

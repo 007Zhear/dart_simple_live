@@ -100,6 +100,8 @@ mixin PlayerMixin {
 }
 
 mixin PlayerStateMixin on PlayerMixin {
+  bool _playerClosing = false;
+
   ///音量控制条计时器
   Timer? hidevolumeTimer;
 
@@ -1322,9 +1324,11 @@ class PlayerController extends BaseController
     );
   }
 
-  @override
-  void onClose() async {
-    Log.w("播放器关闭");
+  Future<void> closePlayerResources() async {
+    if (_playerClosing) {
+      return;
+    }
+    _playerClosing = true;
     await stopBackgroundPlaybackService();
     await player.stop();
     if (smallWindowState.value) {
@@ -1334,6 +1338,12 @@ class PlayerController extends BaseController
     disposeDanmakuController();
     await resetSystem();
     await player.dispose();
+  }
+
+  @override
+  void onClose() async {
+    Log.w("播放器关闭");
+    await closePlayerResources();
     super.onClose();
   }
 }

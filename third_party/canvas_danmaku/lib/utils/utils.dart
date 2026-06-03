@@ -5,6 +5,9 @@ import '/models/danmaku_content_item.dart';
 class Utils {
   static String normalizeImageUrl(String url) {
     final value = url.trim();
+    if (value.startsWith("asset://")) {
+      return value;
+    }
     if (value.startsWith("//")) {
       return "https:$value";
     }

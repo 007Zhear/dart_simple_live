@@ -7,6 +7,7 @@ class IndexedSettingsController extends GetxController {
   RxList<String> liveRoomTabSort = RxList<String>();
   RxList<String> liveRoomQuickAccessSort = RxList<String>();
   RxSet<String> liveRoomQuickAccessEnabled = <String>{}.obs;
+  RxBool contributionRankEnable = false.obs;
   @override
   void onInit() {
     siteSort = AppSettingsController.instance.siteSort;
@@ -16,6 +17,8 @@ class IndexedSettingsController extends GetxController {
         AppSettingsController.instance.liveRoomQuickAccessSort;
     liveRoomQuickAccessEnabled =
         AppSettingsController.instance.liveRoomQuickAccessEnabled;
+    contributionRankEnable =
+        AppSettingsController.instance.contributionRankEnable;
     super.onInit();
   }
 
@@ -62,5 +65,9 @@ class IndexedSettingsController extends GetxController {
 
   void setLiveRoomQuickAccessEnabled(String key, bool enabled) {
     AppSettingsController.instance.setLiveRoomQuickAccessEnabled(key, enabled);
+  }
+
+  void setContributionRankEnable(bool enabled) {
+    AppSettingsController.instance.setContributionRankEnable(enabled);
   }
 }

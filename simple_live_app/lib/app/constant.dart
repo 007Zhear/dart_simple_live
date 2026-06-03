@@ -41,6 +41,11 @@ class Constant {
       iconData: Remix.heart_line,
       title: "关注",
     ),
+    "contribution_rank": LiveRoomTabItem(
+      iconData: Remix.bar_chart_grouped_line,
+      title: "贡献榜/亲密榜",
+      subtitle: "虎牙暂无贡献榜，直播间内会自动跳过",
+    ),
     "settings": LiveRoomTabItem(
       iconData: Remix.settings_3_line,
       title: "设置",
@@ -62,6 +67,11 @@ class Constant {
       iconData: Remix.apps_2_line,
       title: "同类推荐",
       subtitle: "按当前分区查找相似直播间",
+    ),
+    "contribution_rank": LiveRoomQuickAccessItem(
+      iconData: Remix.bar_chart_grouped_line,
+      title: "贡献榜/亲密榜",
+      subtitle: "虎牙暂无贡献榜，直播间内会自动跳过",
     ),
   };
 
@@ -85,10 +95,12 @@ class HomePageItem {
 class LiveRoomTabItem {
   final IconData iconData;
   final String title;
+  final String? subtitle;
 
   LiveRoomTabItem({
     required this.iconData,
     required this.title,
+    this.subtitle,
   });
 }
 

@@ -36,9 +36,26 @@ class PlaybackPageSettingsPage extends GetView<IndexedSettingsController> {
                     return ListTile(
                       key: ValueKey("tab_$key"),
                       title: Text(item.title),
+                      subtitle:
+                          item.subtitle == null ? null : Text(item.subtitle!),
                       visualDensity: VisualDensity.compact,
                       leading: Icon(item.iconData),
-                      trailing: const Icon(Icons.drag_handle),
+                      trailing: key == "contribution_rank"
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Obx(
+                                  () => Switch(
+                                    value:
+                                        controller.contributionRankEnable.value,
+                                    onChanged:
+                                        controller.setContributionRankEnable,
+                                  ),
+                                ),
+                                const Icon(Icons.drag_handle),
+                              ],
+                            )
+                          : const Icon(Icons.drag_handle),
                     );
                   },
                 ).toList(),

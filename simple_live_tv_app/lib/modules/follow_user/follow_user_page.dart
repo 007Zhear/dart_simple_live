@@ -54,26 +54,44 @@ class FollowUserPage extends StatelessWidget {
           ),
           AppStyle.vGap48,
           Expanded(
-            child: Obx(
-              () => MasonryGridView.count(
-                padding: AppStyle.edgeInsetsH48,
-                itemCount: FollowUserService.instance.list.length,
-                crossAxisCount: 3,
-                crossAxisSpacing: 48.w,
-                mainAxisSpacing: 40.w,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemBuilder: (_, i) {
-                  var item = FollowUserService.instance.list[i];
-                  return AnchorCard(
-                    face: item.face,
-                    name: item.userName,
-                    siteId: item.siteId,
-                    liveStatus: item.liveStatus.value,
-                    roomId: item.roomId,
-                  );
-                },
-              ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Obx(
+                    () => MasonryGridView.count(
+                      padding: AppStyle.edgeInsetsH48,
+                      itemCount: FollowUserService.instance.list.length,
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 48.w,
+                      mainAxisSpacing: 40.w,
+                      itemBuilder: (_, i) {
+                        var item = FollowUserService.instance.list[i];
+                        return AnchorCard(
+                          face: item.face,
+                          name: item.userName,
+                          siteId: item.siteId,
+                          liveStatus: item.liveStatus.value,
+                          roomId: item.roomId,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                Obx(
+                  () => Visibility(
+                    visible: FollowUserService.instance.canLoadMore.value,
+                    child: Padding(
+                      padding: AppStyle.edgeInsetsA16,
+                      child: HighlightButton(
+                        focusNode: AppFocusNode(),
+                        iconData: Icons.expand_more,
+                        text: "加载更多",
+                        onTap: FollowUserService.instance.loadData,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
