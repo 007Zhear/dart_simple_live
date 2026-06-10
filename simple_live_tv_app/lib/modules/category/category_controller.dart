@@ -22,7 +22,6 @@ class CategoryController extends BasePageController<AppLiveCategory> {
       SmartDialog.showToast("正在加载，请稍后再试");
       return;
     }
-    if (!tryBeginRefresh()) return;
 
     final nextSite = Sites.allSites[id]!;
     try {
