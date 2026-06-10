@@ -104,6 +104,7 @@ class MultiRoomPlayerController extends GetxController {
       }
       await _loadQualities(roomDetail);
       await _loadPlayUrls(roomDetail);
+      loading.value = false;
       await _openCurrentUrl();
     } catch (e) {
       Log.e(
@@ -154,7 +155,19 @@ class MultiRoomPlayerController extends GetxController {
       throw Exception("播放线路为空");
     }
     errorText.value = "";
-    await player.open(Media(_playUrls[_lineIndex], httpHeaders: _playHeaders));
+    unawaited(
+      player
+          .open(Media(_playUrls[_lineIndex], httpHeaders: _playHeaders))
+          .catchError((Object e, StackTrace stackTrace) {
+        Log.e(
+          "多屏同播打开播放链接失败：${item.site.id}/${item.roomId} $e",
+          stackTrace,
+        );
+        if (!_disposed) {
+          unawaited(_handleMediaError(e.toString()));
+        }
+      }),
+    );
     await player.setVolume(muted.value ? 0 : 100);
     Log.d(
       "多屏同播播放链接：${item.site.id}/${item.roomId} "
@@ -163,7 +176,7 @@ class MultiRoomPlayerController extends GetxController {
   }
 
   Future<void> _handleMediaEnd() async {
-    if (_disposed || loading.value || _playUrls.isEmpty) {
+    if (_disposed || _playUrls.isEmpty) {
       return;
     }
     if (_lineIndex < _playUrls.length - 1) {
@@ -177,7 +190,7 @@ class MultiRoomPlayerController extends GetxController {
   }
 
   Future<void> _handleMediaError(String error) async {
-    if (_disposed || loading.value || _playUrls.isEmpty) {
+    if (_disposed || _playUrls.isEmpty) {
       return;
     }
     if (_mediaErrorRetryCount < 2) {
