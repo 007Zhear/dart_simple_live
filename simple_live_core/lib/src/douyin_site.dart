@@ -505,7 +505,6 @@ class DouyinSite implements LiveSite {
   @override
   Future<LiveRoomDetail> getRoomDetail({required String roomId}) async {
     final stopwatch = Stopwatch()..start();
-    await _throttleRoomDetailRequest();
     try {
       // 有两种roomId，一种是webRid，一种是roomId
       // roomId是一次性的，用户每次重新开播都会生成一个新的roomId
