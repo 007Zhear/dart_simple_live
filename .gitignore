@@ -12,6 +12,8 @@ experience/
 build_android_apk.bat
 build_tv_apk.bat
 deploy_windows.bat
+tools/build-release.ps1
+tools/build-*.ps1
 
 # local temp workspace files
 fix-guide.md
