@@ -54,10 +54,6 @@ class _FollowUserPageState extends State<FollowUserPage> {
   }
 
   void _toggleRoom(dynamic item) {
-    if (item.liveStatus.value != 2) {
-      SmartDialog.showToast("当前不是直播中，请先刷新关注状态");
-      return;
-    }
     if (_selectedRoomKeys.contains(item.id)) {
       _selectedRoomKeys.remove(item.id);
     } else {
@@ -70,13 +66,12 @@ class _FollowUserPageState extends State<FollowUserPage> {
         .where(
           (item) =>
               _selectedRoomKeys.contains(item.id) &&
-              item.liveStatus.value == 2 &&
               Sites.allSites.containsKey(item.siteId),
         )
         .map(MultiRoomItem.fromFollow)
         .toList();
     if (selected.length < 2) {
-      SmartDialog.showToast("请至少选择 2 个直播中的主播");
+      SmartDialog.showToast("请至少选择 2 个主播");
       return;
     }
     AppNavigator.toMultiRoom(selected);
@@ -381,11 +376,18 @@ class _FollowUserPageState extends State<FollowUserPage> {
                   ),
                 ),
                 Text(
-                  "${progress.current}/${progress.total}",
+                  "${progress.resolvedCount}/${progress.total}",
                   style: AppStyle.textStyleWhite.copyWith(fontSize: 24.w),
                 ),
               ],
             ),
+            if (progress.detail.isNotEmpty) ...[
+              AppStyle.vGap8,
+              Text(
+                progress.detail,
+                style: AppStyle.textStyleWhite.copyWith(fontSize: 20.w),
+              ),
+            ],
             AppStyle.vGap12,
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
