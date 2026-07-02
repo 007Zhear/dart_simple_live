@@ -21,6 +21,7 @@ val syncDartQuickJsJniLibs = tasks.register("syncDartQuickJsJniLibs") {
     val hooksRoot = projectRoot.resolve(".dart_tool/hooks_runner/dart_quickjs")
     val sharedBuildRoot = projectRoot.resolve(".dart_tool/hooks_runner/shared/dart_quickjs/build")
     val generatedRoot = projectDir.resolve("build/generated/dart_quickjs/jniLibs")
+    val flutterNativeAssetsRoot = projectRoot.resolve("build/native_assets/android/jniLibs/lib")
     val abiByArch = mapOf(
         "arm" to "armeabi-v7a",
         "arm64" to "arm64-v8a",
@@ -35,6 +36,15 @@ val syncDartQuickJsJniLibs = tasks.register("syncDartQuickJsJniLibs") {
     }
 
     doLast {
+        val flutterNativeAssetsReady = abiByArch.values.all { abi ->
+            flutterNativeAssetsRoot.resolve("$abi/libdart_quickjs.so").let { it.exists() && it.length() > 0 }
+        }
+        if (flutterNativeAssetsReady) {
+            generatedRoot.deleteRecursively()
+            logger.lifecycle("Using Flutter native assets for dart_quickjs Android libraries.")
+            return@doLast
+        }
+
         if (!hooksRoot.exists()) {
             logger.warn("dart_quickjs native asset hooks directory does not exist: $hooksRoot")
             return@doLast

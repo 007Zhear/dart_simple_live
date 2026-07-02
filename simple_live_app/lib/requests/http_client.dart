@@ -223,6 +223,10 @@ class HttpClient {
             : "发送$method请求失败";
       case DioExceptionType.badResponse:
         return exception.message ?? "服务器响应异常";
+      default:
+        return exception.message?.isNotEmpty == true
+            ? exception.message!
+            : "发送$method请求失败";
     }
   }
 }
