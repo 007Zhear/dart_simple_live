@@ -2104,6 +2104,7 @@ class LiveRoomController extends PlayerController
     required VoidCallback onClose,
     ScrollController? scrollController,
   }) {
+    final currentSite = site;
     final histories = <History>[].obs;
     final loading = true.obs;
 
@@ -2131,6 +2132,7 @@ class LiveRoomController extends PlayerController
       return RefreshIndicator(
         onRefresh: loadHistory,
         child: ListView.separated(
+          key: const PageStorageKey<String>("liveRoomHistorySelection"),
           controller: scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: AppStyle.edgeInsetsA12,
@@ -2139,9 +2141,12 @@ class LiveRoomController extends PlayerController
           itemBuilder: (_, i) {
             final item = histories[i];
             final historySite = Sites.allSites[item.siteId];
+            final isCurrent =
+                currentSite.id == item.siteId && roomId == item.roomId;
             return Material(
               color: Colors.transparent,
               child: ListTile(
+                selected: isCurrent,
                 contentPadding: AppStyle.edgeInsetsL16.copyWith(right: 8),
                 leading: NetImage(
                   item.face,
@@ -2213,6 +2218,8 @@ class LiveRoomController extends PlayerController
     required VoidCallback onClose,
     ScrollController? scrollController,
   }) {
+    final currentSite = site;
+    final currentRoomId = roomId;
     final category = _buildRecommendationCategory();
     if (category == null) {
       return const AppEmptyWidget(
@@ -2275,6 +2282,9 @@ class LiveRoomController extends PlayerController
       return RefreshIndicator(
         onRefresh: () => loadRecommendations(refresh: true),
         child: ListView.builder(
+          key: const PageStorageKey<String>(
+            "liveRoomCategoryRecommendationSelection",
+          ),
           controller: scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: AppStyle.edgeInsetsA12,
@@ -2321,6 +2331,8 @@ class LiveRoomController extends PlayerController
             }
 
             final item = rooms[i - 1];
+            final isCurrent =
+                currentSite.id == site.id && currentRoomId == item.roomId;
             return Padding(
               padding: EdgeInsets.only(bottom: i == rooms.length ? 0 : 8),
               child: Material(
@@ -2335,9 +2347,13 @@ class LiveRoomController extends PlayerController
                     padding: AppStyle.edgeInsetsA8,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      color: Get.theme.cardColor,
+                      color: isCurrent
+                          ? Get.theme.colorScheme.primary.withAlpha(25)
+                          : Get.theme.cardColor,
                       border: Border.all(
-                        color: Colors.grey.withAlpha(25),
+                        color: isCurrent
+                            ? Get.theme.colorScheme.primary.withAlpha(120)
+                            : Colors.grey.withAlpha(25),
                       ),
                     ),
                     child: Row(
@@ -2536,26 +2552,18 @@ class LiveRoomController extends PlayerController
                 child: RefreshIndicator(
                   onRefresh: FollowService.instance.loadData,
                   child: ListView.builder(
+                    key: const PageStorageKey<String>(
+                      "liveRoomFollowUserSelection",
+                    ),
                     controller: scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: AppStyle.edgeInsetsV8,
                     itemCount: followUsers.length,
                     itemBuilder: (_, i) {
                       var item = followUsers[i];
-                      return Obx(
-                        () => FollowUserItem(
-                          item: item,
-                          showSpecialMark: true,
-                          playing: rxSite.value.id == item.siteId &&
-                              rxRoomId.value == item.roomId,
-                          onTap: () {
-                            onClose();
-                            resetRoom(
-                              Sites.allSites[item.siteId]!,
-                              item.roomId,
-                            );
-                          },
-                        ),
+                      return _buildLiveRoomFollowItem(
+                        item: item,
+                        onClose: onClose,
                       );
                     },
                   ),
@@ -2577,6 +2585,27 @@ class LiveRoomController extends PlayerController
         ],
       );
     });
+  }
+
+  Widget _buildLiveRoomFollowItem({
+    required FollowUser item,
+    required VoidCallback onClose,
+  }) {
+    return Obx(
+      () => FollowUserItem(
+        item: item,
+        showSpecialMark: true,
+        playing: rxSite.value.id == item.siteId &&
+            rxRoomId.value == item.roomId,
+        onTap: () {
+          onClose();
+          resetRoom(
+            Sites.allSites[item.siteId]!,
+            item.roomId,
+          );
+        },
+      ),
+    );
   }
 
   void showFollowUserSheet() {
