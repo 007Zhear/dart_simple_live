@@ -529,6 +529,9 @@ class MyApp extends StatelessWidget {
             ThemeMode.values[Get.find<AppSettingsController>().themeMode.value],
         initialRoute: RoutePath.kIndex,
         getPages: AppPages.routes,
+        routingCallback: (_) {
+          unawaited(_syncDesktopShortcutCaptureState());
+        },
         //国际化
         locale: const Locale("zh", "CN"),
         localizationsDelegates: const [
@@ -648,8 +651,8 @@ class MyApp extends StatelessWidget {
     if (!_isDesktopPlatform) {
       return;
     }
-    final enabled = Get.isRegistered<LiveRoomController>() &&
-        !_hasEditableTextFocus;
+    final enabled =
+        Get.isRegistered<LiveRoomController>() && !_hasEditableTextFocus;
     if (_desktopShortcutCaptureEnabled == enabled) {
       return;
     }
@@ -789,7 +792,6 @@ class MyApp extends StatelessWidget {
 
   Future<void> _handleDesktopShortcutByPhysicalKey(
       String physicalKeyName) async {
-    unawaited(_syncDesktopShortcutCaptureState());
     if (_hasEditableTextFocus) {
       return;
     }
